@@ -82,8 +82,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
     // TODO: Test if adding padding helps under contention
     //private long pad0, pad1, pad2, pad3, pad4, pad5, pad6, pad7;
 
-    protected PoolArena(PooledByteBufAllocator parent, int pageSize,
-          int maxOrder, int pageShifts, int chunkSize, int cacheAlignment) {
+    protected PoolArena(PooledByteBufAllocator parent, int pageSize, int maxOrder, int pageShifts, int chunkSize, int cacheAlignment) {
         this.parent = parent;
         this.pageSize = pageSize;
         this.maxOrder = maxOrder;
@@ -668,10 +667,8 @@ abstract class PoolArena<T> implements PoolArenaMetric {
 
     static final class HeapArena extends PoolArena<byte[]> {
 
-        HeapArena(PooledByteBufAllocator parent, int pageSize, int maxOrder,
-                int pageShifts, int chunkSize, int directMemoryCacheAlignment) {
-            super(parent, pageSize, maxOrder, pageShifts, chunkSize,
-                    directMemoryCacheAlignment);
+        HeapArena(PooledByteBufAllocator parent, int pageSize, int maxOrder, int pageShifts, int chunkSize, int directMemoryCacheAlignment) {
+            super(parent, pageSize, maxOrder, pageShifts, chunkSize, directMemoryCacheAlignment);
         }
 
         private static byte[] newByteArray(int size) {
@@ -716,10 +713,8 @@ abstract class PoolArena<T> implements PoolArenaMetric {
 
     static final class DirectArena extends PoolArena<ByteBuffer> {
 
-        DirectArena(PooledByteBufAllocator parent, int pageSize, int maxOrder,
-                int pageShifts, int chunkSize, int directMemoryCacheAlignment) {
-            super(parent, pageSize, maxOrder, pageShifts, chunkSize,
-                    directMemoryCacheAlignment);
+        DirectArena(PooledByteBufAllocator parent, int pageSize, int maxOrder, int pageShifts, int chunkSize, int directMemoryCacheAlignment) {
+            super(parent, pageSize, maxOrder, pageShifts, chunkSize, directMemoryCacheAlignment);
         }
 
         @Override

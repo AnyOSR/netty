@@ -27,8 +27,7 @@ import static io.netty.util.internal.ObjectUtil.checkPositive;
  */
 public abstract class AbstractReferenceCountedByteBuf extends AbstractByteBuf {
 
-    private static final AtomicIntegerFieldUpdater<AbstractReferenceCountedByteBuf> refCntUpdater =
-            AtomicIntegerFieldUpdater.newUpdater(AbstractReferenceCountedByteBuf.class, "refCnt");
+    private static final AtomicIntegerFieldUpdater<AbstractReferenceCountedByteBuf> refCntUpdater = AtomicIntegerFieldUpdater.newUpdater(AbstractReferenceCountedByteBuf.class, "refCnt");
 
     private volatile int refCnt;
 

@@ -47,6 +47,12 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
         bitmap = null;
     }
 
+    //head
+    //chunk          当前page所在chunk
+    //memoryMapIdx   当前page在所在chunk.memoryMap中的index
+    //runOffset      当前page之前的所有page的逻辑块大小
+    //pageSize       当前page的大小
+    //elemSize       分配大小
     PoolSubpage(PoolSubpage<T> head, PoolChunk<T> chunk, int memoryMapIdx, int runOffset, int pageSize, int elemSize) {
         this.chunk = chunk;
         this.memoryMapIdx = memoryMapIdx;
@@ -60,10 +66,14 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
         doNotDestroy = true;
         this.elemSize = elemSize;
         if (elemSize != 0) {
-            maxNumElems = numAvail = pageSize / elemSize;
-            nextAvail = 0;
+            maxNumElems = numAvail = pageSize / elemSize;   //最大可用数 剩余可用数
+            nextAvail = 0;                                  //第一个可用index
+
+            // maxNumElems / 64
+            // 一个elem是否可用 用一个long的bit表示
+            // 所以一共需要bitmapLength个long表示
             bitmapLength = maxNumElems >>> 6;
-            if ((maxNumElems & 63) != 0) {
+            if ((maxNumElems & 63) != 0) {     //如果maxNumElems不为64的整数倍，则再增加一个long
                 bitmapLength ++;
             }
 
@@ -135,6 +145,7 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
         }
     }
 
+    //prev
     private void addToPool(PoolSubpage<T> head) {
         assert prev == null && next == null;
         prev = head;

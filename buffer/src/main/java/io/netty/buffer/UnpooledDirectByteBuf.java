@@ -34,7 +34,6 @@ import java.nio.channels.ScatteringByteChannel;
 public class UnpooledDirectByteBuf extends AbstractReferenceCountedByteBuf {
 
     private final ByteBufAllocator alloc;
-
     private ByteBuffer buffer;
     private ByteBuffer tmpNioBuf;
     private int capacity;
@@ -58,8 +57,7 @@ public class UnpooledDirectByteBuf extends AbstractReferenceCountedByteBuf {
             throw new IllegalArgumentException("maxCapacity: " + maxCapacity);
         }
         if (initialCapacity > maxCapacity) {
-            throw new IllegalArgumentException(String.format(
-                    "initialCapacity(%d) > maxCapacity(%d)", initialCapacity, maxCapacity));
+            throw new IllegalArgumentException(String.format("initialCapacity(%d) > maxCapacity(%d)", initialCapacity, maxCapacity));
         }
 
         this.alloc = alloc;
@@ -88,8 +86,7 @@ public class UnpooledDirectByteBuf extends AbstractReferenceCountedByteBuf {
 
         int initialCapacity = initialBuffer.remaining();
         if (initialCapacity > maxCapacity) {
-            throw new IllegalArgumentException(String.format(
-                    "initialCapacity(%d) > maxCapacity(%d)", initialCapacity, maxCapacity));
+            throw new IllegalArgumentException(String.format("initialCapacity(%d) > maxCapacity(%d)", initialCapacity, maxCapacity));
         }
 
         this.alloc = alloc;
@@ -145,26 +142,26 @@ public class UnpooledDirectByteBuf extends AbstractReferenceCountedByteBuf {
         int writerIndex = writerIndex();
 
         int oldCapacity = capacity;
-        if (newCapacity > oldCapacity) {
+        if (newCapacity > oldCapacity) {                       //capacity增大了
             ByteBuffer oldBuffer = buffer;
-            ByteBuffer newBuffer = allocateDirect(newCapacity);
+            ByteBuffer newBuffer = allocateDirect(newCapacity);             //alloc 一个新的buffer
             oldBuffer.position(0).limit(oldBuffer.capacity());
             newBuffer.position(0).limit(oldBuffer.capacity());
-            newBuffer.put(oldBuffer);
-            newBuffer.clear();
+            newBuffer.put(oldBuffer);                                       //将数据复制到新buffer
+            newBuffer.clear();                                              //将position设置为0   limit设置为capacity
             setByteBuffer(newBuffer);
         } else if (newCapacity < oldCapacity) {
             ByteBuffer oldBuffer = buffer;
             ByteBuffer newBuffer = allocateDirect(newCapacity);
             if (readerIndex < newCapacity) {
-                if (writerIndex > newCapacity) {
+                if (writerIndex > newCapacity) {   //如果 newCapacity 小于 原来的writerIndex ，则将 新的writerIndex 设置为 newCapacity，会丢失可读字节
                     writerIndex(writerIndex = newCapacity);
                 }
                 oldBuffer.position(readerIndex).limit(writerIndex);
                 newBuffer.position(readerIndex).limit(writerIndex);
                 newBuffer.put(oldBuffer);
                 newBuffer.clear();
-            } else {
+            } else {                           //如果 readerIndex >= newCapacity,则将 readerIndex 和 writerIndex 都置为 newCapacity 可能会有字节丢失
                 setIndex(newCapacity, newCapacity);
             }
             setByteBuffer(newBuffer);

@@ -33,8 +33,7 @@ public final class UnpooledByteBufAllocator extends AbstractByteBufAllocator imp
     /**
      * Default instance which uses leak-detection for direct buffers.
      */
-    public static final UnpooledByteBufAllocator DEFAULT =
-            new UnpooledByteBufAllocator(PlatformDependent.directBufferPreferred());
+    public static final UnpooledByteBufAllocator DEFAULT = new UnpooledByteBufAllocator(PlatformDependent.directBufferPreferred());
 
     /**
      * Create a new instance which uses leak-detection for direct buffers.
@@ -73,8 +72,7 @@ public final class UnpooledByteBufAllocator extends AbstractByteBufAllocator imp
     public UnpooledByteBufAllocator(boolean preferDirect, boolean disableLeakDetector, boolean tryNoCleaner) {
         super(preferDirect);
         this.disableLeakDetector = disableLeakDetector;
-        noCleaner = tryNoCleaner && PlatformDependent.hasUnsafe()
-                && PlatformDependent.hasDirectBufferNoCleanerConstructor();
+        noCleaner = tryNoCleaner && PlatformDependent.hasUnsafe() && PlatformDependent.hasDirectBufferNoCleanerConstructor();
     }
 
     @Override
@@ -84,12 +82,12 @@ public final class UnpooledByteBufAllocator extends AbstractByteBufAllocator imp
                 new InstrumentedUnpooledHeapByteBuf(this, initialCapacity, maxCapacity);
     }
 
+    // unsafe noCleaner leadDetector
     @Override
     protected ByteBuf newDirectBuffer(int initialCapacity, int maxCapacity) {
         final ByteBuf buf;
         if (PlatformDependent.hasUnsafe()) {
-            buf = noCleaner ? new InstrumentedUnpooledUnsafeNoCleanerDirectByteBuf(this, initialCapacity, maxCapacity) :
-                    new InstrumentedUnpooledUnsafeDirectByteBuf(this, initialCapacity, maxCapacity);
+            buf = noCleaner ? new InstrumentedUnpooledUnsafeNoCleanerDirectByteBuf(this, initialCapacity, maxCapacity) : new InstrumentedUnpooledUnsafeDirectByteBuf(this, initialCapacity, maxCapacity);
         } else {
             buf = new InstrumentedUnpooledDirectByteBuf(this, initialCapacity, maxCapacity);
         }
@@ -174,10 +172,8 @@ public final class UnpooledByteBufAllocator extends AbstractByteBufAllocator imp
         }
     }
 
-    private static final class InstrumentedUnpooledUnsafeNoCleanerDirectByteBuf
-            extends UnpooledUnsafeNoCleanerDirectByteBuf {
-        InstrumentedUnpooledUnsafeNoCleanerDirectByteBuf(
-                UnpooledByteBufAllocator alloc, int initialCapacity, int maxCapacity) {
+    private static final class InstrumentedUnpooledUnsafeNoCleanerDirectByteBuf extends UnpooledUnsafeNoCleanerDirectByteBuf {
+        InstrumentedUnpooledUnsafeNoCleanerDirectByteBuf(UnpooledByteBufAllocator alloc, int initialCapacity, int maxCapacity) {
             super(alloc, initialCapacity, maxCapacity);
         }
 

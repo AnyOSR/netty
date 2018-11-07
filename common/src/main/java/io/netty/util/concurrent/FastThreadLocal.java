@@ -109,8 +109,7 @@ public class FastThreadLocal<V> {
         variablesToRemove.add(variable);
     }
 
-    private static void removeFromVariablesToRemove(
-            InternalThreadLocalMap threadLocalMap, FastThreadLocal<?> variable) {
+    private static void removeFromVariablesToRemove(InternalThreadLocalMap threadLocalMap, FastThreadLocal<?> variable) {
 
         Object v = threadLocalMap.indexedVariable(variablesToRemoveIndex);
 

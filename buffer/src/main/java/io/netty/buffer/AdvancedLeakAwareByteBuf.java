@@ -35,7 +35,6 @@ final class AdvancedLeakAwareByteBuf extends SimpleLeakAwareByteBuf {
 
     private static final String PROP_ACQUIRE_AND_RELEASE_ONLY = "io.netty.leakDetection.acquireAndReleaseOnly";
     private static final boolean ACQUIRE_AND_RELEASE_ONLY;
-
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(AdvancedLeakAwareByteBuf.class);
 
     static {
@@ -45,8 +44,7 @@ final class AdvancedLeakAwareByteBuf extends SimpleLeakAwareByteBuf {
             logger.debug("-D{}: {}", PROP_ACQUIRE_AND_RELEASE_ONLY, ACQUIRE_AND_RELEASE_ONLY);
         }
 
-        ResourceLeakDetector.addExclusions(
-                AdvancedLeakAwareByteBuf.class, "recordLeakNonRefCountingOperation");
+        ResourceLeakDetector.addExclusions(AdvancedLeakAwareByteBuf.class, "recordLeakNonRefCountingOperation");
     }
 
     AdvancedLeakAwareByteBuf(ByteBuf buf, ResourceLeakTracker<ByteBuf> leak) {

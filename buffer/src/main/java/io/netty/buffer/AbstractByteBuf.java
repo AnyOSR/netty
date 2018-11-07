@@ -50,8 +50,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
         }
     }
 
-    static final ResourceLeakDetector<ByteBuf> leakDetector =
-            ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
+    static final ResourceLeakDetector<ByteBuf> leakDetector = ResourceLeakDetectorFactory.instance().newResourceLeakDetector(ByteBuf.class);
 
     int readerIndex;
     int writerIndex;
@@ -86,8 +85,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
     @Override
     public ByteBuf readerIndex(int readerIndex) {
         if (readerIndex < 0 || readerIndex > writerIndex) {
-            throw new IndexOutOfBoundsException(String.format(
-                    "readerIndex: %d (expected: 0 <= readerIndex <= writerIndex(%d))", readerIndex, writerIndex));
+            throw new IndexOutOfBoundsException(String.format("readerIndex: %d (expected: 0 <= readerIndex <= writerIndex(%d))", readerIndex, writerIndex));
         }
         this.readerIndex = readerIndex;
         return this;
@@ -101,9 +99,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
     @Override
     public ByteBuf writerIndex(int writerIndex) {
         if (writerIndex < readerIndex || writerIndex > capacity()) {
-            throw new IndexOutOfBoundsException(String.format(
-                    "writerIndex: %d (expected: readerIndex(%d) <= writerIndex <= capacity(%d))",
-                    writerIndex, readerIndex, capacity()));
+            throw new IndexOutOfBoundsException(String.format("writerIndex: %d (expected: readerIndex(%d) <= writerIndex <= capacity(%d))", writerIndex, readerIndex, capacity()));
         }
         this.writerIndex = writerIndex;
         return this;
@@ -112,9 +108,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
     @Override
     public ByteBuf setIndex(int readerIndex, int writerIndex) {
         if (readerIndex < 0 || readerIndex > writerIndex || writerIndex > capacity()) {
-            throw new IndexOutOfBoundsException(String.format(
-                    "readerIndex: %d, writerIndex: %d (expected: 0 <= readerIndex <= writerIndex <= capacity(%d))",
-                    readerIndex, writerIndex, capacity()));
+            throw new IndexOutOfBoundsException(String.format("readerIndex: %d, writerIndex: %d (expected: 0 <= readerIndex <= writerIndex <= capacity(%d))", readerIndex, writerIndex, capacity()));
         }
         setIndex0(readerIndex, writerIndex);
         return this;
@@ -302,17 +296,21 @@ public abstract class AbstractByteBuf extends ByteBuf {
         return 2;
     }
 
+    //minNewCapacity 最小申请内存
     private int calculateNewCapacity(int minNewCapacity) {
         final int maxCapacity = this.maxCapacity;
         final int threshold = 1048576 * 4; // 4 MiB page
 
+        //最小申请内存为阈值，则为阈值，最大4M
         if (minNewCapacity == threshold) {
             return threshold;
         }
-
         // If over threshold, do not double but just increase by threshold.
+        //每次增加至threshold的整数倍，直到最大maxCapacity
         if (minNewCapacity > threshold) {
-            int newCapacity = minNewCapacity / threshold * threshold;
+            int newCapacity = minNewCapacity / threshold * threshold;    //得到的newCapacity是threshold的整数倍，向下取整
+
+            //如果newCapacity+threshold超过了maxCapacity的值，则将newCapacity设置为maxCapacity，否则将newCapacity的值加上threshold
             if (newCapacity > maxCapacity - threshold) {
                 newCapacity = maxCapacity;
             } else {
@@ -322,6 +320,8 @@ public abstract class AbstractByteBuf extends ByteBuf {
         }
 
         // Not over threshold. Double up to 4 MiB, starting from 64.
+        // minNewCapacity < threshold
+        //如果minNewCapacity小于threshold，则一直两倍扩，直到大于等于minNewCapacity
         int newCapacity = 64;
         while (newCapacity < minNewCapacity) {
             newCapacity <<= 1;
@@ -1168,6 +1168,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
      * Should be called by every method that tries to access the buffers content to check
      * if the buffer was released before.
      */
+    //检查count是否为0
     protected final void ensureAccessible() {
         if (checkAccessible && refCnt() == 0) {
             throw new IllegalReferenceCountException(0);
