@@ -242,14 +242,14 @@ final class PoolChunk<T> implements PoolChunkMetric {
      * This needs to handle the special case when both children are completely free
      * in which case parent be directly allocated on request of size = child-size * 2
      *
-     * @param id id
+     * @param id id  为当前page在所在chunk.memoryMap中的索引值
      */
     private void updateParentsFree(int id) {
-        int logChild = depth(id) + 1;
+        int logChild = depth(id) + 1;     //计算子节点的深度
         while (id > 1) {
-            int parentId = id >>> 1;
-            byte val1 = value(id);
-            byte val2 = value(id ^ 1);
+            int parentId = id >>> 1;      //计算父节点在chunk.memoryMap中的索引值
+            byte val1 = value(id);         //当前page的可分配深度
+            byte val2 = value(id ^ 1); //当前page的父节点的另一子节点的可分配深度
             logChild -= 1; // in first iteration equals log, subsequently reduce 1 from logChild as we traverse up
 
             if (val1 == logChild && val2 == logChild) {
@@ -311,6 +311,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
      * @return index in memoryMap
      */
     //分配大于等于pageSize的内存
+    //其高32位肯定为0
     private long allocateRun(int normCapacity) {
 
         // 2^(maxOrder+pageShifts) = chunkSize
@@ -370,25 +371,28 @@ final class PoolChunk<T> implements PoolChunkMetric {
      *
      * @param handle handle to free
      */
+    //free page中的某一个elem
     void free(long handle) {
-        int memoryMapIdx = memoryMapIdx(handle);
-        int bitmapIdx = bitmapIdx(handle);
+        int memoryMapIdx = memoryMapIdx(handle);      //计算当前elem所在page在chunk.memoryMap中的索引值
+        int bitmapIdx = bitmapIdx(handle);            //计算当前elem在所在page中的位置值
 
+        //不为0，当前handle肯定是page中某一个elem的handle
         if (bitmapIdx != 0) { // free a subpage
-            PoolSubpage<T> subpage = subpages[subpageIdx(memoryMapIdx)];
+            PoolSubpage<T> subpage = subpages[subpageIdx(memoryMapIdx)];       //当前elem所属page
             assert subpage != null && subpage.doNotDestroy;
 
             // Obtain the head of the PoolSubPage pool that is owned by the PoolArena and synchronize on it.
             // This is need as we may add it back and so alter the linked-list structure.
-            PoolSubpage<T> head = arena.findSubpagePoolHead(subpage.elemSize);
+            PoolSubpage<T> head = arena.findSubpagePoolHead(subpage.elemSize);  //每个不同elemSize大小的page组成了一条链？然后会有多条莲？
             synchronized (head) {
-                if (subpage.free(head, bitmapIdx & 0x3FFFFFFF)) {
+                if (subpage.free(head, bitmapIdx & 0x3FFFFFFF)) {      //将最高两位位置0
                     return;
                 }
             }
         }
+        //如果subpage被remove
         freeBytes += runLength(memoryMapIdx);
-        setValue(memoryMapIdx, depth(memoryMapIdx));
+        setValue(memoryMapIdx, depth(memoryMapIdx)); //重新置为可用
         updateParentsFree(memoryMapIdx);
     }
 
