@@ -61,9 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class ThreadLocalRandom extends Random {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(ThreadLocalRandom.class);
-
     private static final AtomicLong seedUniquifier = new AtomicLong();
-
     private static volatile long initialSeedUniquifier;
 
     public static void setInitialSeedUniquifier(long initialSeedUniquifier) {

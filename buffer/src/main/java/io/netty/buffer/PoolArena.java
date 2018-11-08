@@ -37,7 +37,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         Normal
     }
 
-    static final int numTinySubpagePools = 512 >>> 4;
+    static final int numTinySubpagePools = 512 >>> 4;    //tiny内存大小 <512 然后tinySubpagePools 每16一等级
 
     final PooledByteBufAllocator parent;
 
@@ -52,10 +52,10 @@ abstract class PoolArena<T> implements PoolArenaMetric {
     private final PoolSubpage<T>[] tinySubpagePools;
     private final PoolSubpage<T>[] smallSubpagePools;
 
-    private final PoolChunkList<T> q050;
-    private final PoolChunkList<T> q025;
-    private final PoolChunkList<T> q000;
     private final PoolChunkList<T> qInit;
+    private final PoolChunkList<T> q000;
+    private final PoolChunkList<T> q025;
+    private final PoolChunkList<T> q050;
     private final PoolChunkList<T> q075;
     private final PoolChunkList<T> q100;
 
@@ -84,19 +84,20 @@ abstract class PoolArena<T> implements PoolArenaMetric {
 
     protected PoolArena(PooledByteBufAllocator parent, int pageSize, int maxOrder, int pageShifts, int chunkSize, int cacheAlignment) {
         this.parent = parent;
-        this.pageSize = pageSize;
-        this.maxOrder = maxOrder;
-        this.pageShifts = pageShifts;
-        this.chunkSize = chunkSize;
-        directMemoryCacheAlignment = cacheAlignment;
+        this.pageSize = pageSize;                       // 2^13  8kb
+        this.pageShifts = pageShifts;                   // 13
+        this.maxOrder = maxOrder;                       // 11
+        this.chunkSize = chunkSize;                     // pageSize * 2^maxOrder  2^24  16MB
+        directMemoryCacheAlignment = cacheAlignment;            //内存对齐 2的整数倍
         directMemoryCacheAlignmentMask = cacheAlignment - 1;
-        subpageOverflowMask = ~(pageSize - 1);
-        tinySubpagePools = newSubpagePoolArray(numTinySubpagePools);
+        subpageOverflowMask = ~(pageSize - 1);                  //任意一个值a，只要 a & subpageOverflowMask > 0，则说明 a >= pageSize
+                                                                //            如果  a & subpageOverflowMask = 0 ，则说明 a < pageSize
+        tinySubpagePools = newSubpagePoolArray(numTinySubpagePools);     // 32
         for (int i = 0; i < tinySubpagePools.length; i ++) {
             tinySubpagePools[i] = newSubpagePoolHead(pageSize);
         }
 
-        numSmallSubpagePools = pageShifts - 9;
+        numSmallSubpagePools = pageShifts - 9;                           // 4
         smallSubpagePools = newSubpagePoolArray(numSmallSubpagePools);
         for (int i = 0; i < smallSubpagePools.length; i ++) {
             smallSubpagePools[i] = newSubpagePoolHead(pageSize);
@@ -126,6 +127,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         chunkListMetrics = Collections.unmodifiableList(metrics);
     }
 
+    //初始化的时候，将next和prev都置成了自己，不当链表用
     private PoolSubpage<T> newSubpagePoolHead(int pageSize) {
         PoolSubpage<T> head = new PoolSubpage<T>(pageSize);
         head.prev = head;
@@ -146,33 +148,41 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         return buf;
     }
 
+    // normCapacity/16
+    // 根据normCapacity选择其在tinySubpagePools的下标索引
+    // tiny大小定义为511以下，则 512/16 = numTinySubpagePools
     static int tinyIdx(int normCapacity) {
         return normCapacity >>> 4;
     }
 
+    //先有规则，然后有长度
+    // numSmallSubpagePools = pageShifts - 9
+    // pageSize = 2 ^ pageShifts
+    // 512 <= small内存大小 < pageSize
     static int smallIdx(int normCapacity) {
-        int tableIdx = 0;
-        int i = normCapacity >>> 10;
-        while (i != 0) {
+        int tableIdx = 0;                    //按照当前规则，smallSubpagePools中第i个元素所能容纳的最大normCapacity为 2^(10+x-1)-1 = 2^(9+x)-1
+        int i = normCapacity >>> 10;         //又最后一个数组元素能容纳的最大normCapacity为 pageSize-1 = 2^pageShifts -1
+        while (i != 0) {                     //则 pageShifts = 9+x ,则 x = pageShifts - 9 ,即 numSmallSubpagePools = pageShifts - 9
             i >>>= 1;
             tableIdx ++;
         }
         return tableIdx;
     }
 
-    // capacity < pageSize
+    // normCapacity < pageSize
     boolean isTinyOrSmall(int normCapacity) {
         return (normCapacity & subpageOverflowMask) == 0;
     }
 
-    // normCapacity < 512
+    // 0 ~ 511 tiny
+    // 512 ~ pageSize-1 small
     static boolean isTiny(int normCapacity) {
-        return (normCapacity & 0xFFFFFE00) == 0;
+        return (normCapacity & 0xFFFFFE00) == 0;      // normCapacity <= 2^9-1 = 511 < 512
     }
 
     private void allocate(PoolThreadCache cache, PooledByteBuf<T> buf, final int reqCapacity) {
         final int normCapacity = normalizeCapacity(reqCapacity);
-        if (isTinyOrSmall(normCapacity)) { // capacity < pageSize
+        if (isTinyOrSmall(normCapacity)) { // normCapacity < pageSize
             int tableIdx;
             PoolSubpage<T>[] table;
             boolean tiny = isTiny(normCapacity);
@@ -181,7 +191,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
                     // was able to allocate out of the cache so move on
                     return;
                 }
-                tableIdx = tinyIdx(normCapacity);
+                tableIdx = tinyIdx(normCapacity);         //根据normCapacity计算其在tinySubpagePools中的索引下标，应该被分配在哪个page中
                 table = tinySubpagePools;
             } else {
                 if (cache.allocateSmall(this, buf, reqCapacity, normCapacity)) {
@@ -329,11 +339,14 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         return table[tableIdx];
     }
 
+    //归一化reqCapacity
     int normalizeCapacity(int reqCapacity) {
         if (reqCapacity < 0) {
             throw new IllegalArgumentException("capacity: " + reqCapacity + " (expected: 0+)");
         }
 
+        //如果size大于等于chunkSize，且要求内存对齐，则计算其对齐capacity
+        //对齐是chunk对齐还是page对齐？
         if (reqCapacity >= chunkSize) {
             return directMemoryCacheAlignment == 0 ? reqCapacity : alignCapacity(reqCapacity);
         }
@@ -348,30 +361,32 @@ abstract class PoolArena<T> implements PoolArenaMetric {
             normalizedCapacity |= normalizedCapacity >>>  4;
             normalizedCapacity |= normalizedCapacity >>>  8;
             normalizedCapacity |= normalizedCapacity >>> 16;
-            normalizedCapacity ++;
+            normalizedCapacity ++;                                  //计算 大于等于reqCapacity的一个数，其为2的幂次方
 
-            if (normalizedCapacity < 0) {
+            if (normalizedCapacity < 0) {                           //溢出则无符号右移一位，有可能使得到的数小于reqCapacity？这也可以？
                 normalizedCapacity >>>= 1;
             }
-            assert directMemoryCacheAlignment == 0 || (normalizedCapacity & directMemoryCacheAlignmentMask) == 0;
+            assert directMemoryCacheAlignment == 0 || (normalizedCapacity & directMemoryCacheAlignmentMask) == 0;  //要么不对齐，要么对齐，然后normalizedCapacity是directMemoryCacheAlignment的整数倍
 
             return normalizedCapacity;
         }
 
-        if (directMemoryCacheAlignment > 0) {
+        // reqCapacity < 512  tiny
+        if (directMemoryCacheAlignment > 0) {         // 要求对齐
             return alignCapacity(reqCapacity);
         }
 
         // Quantum-spaced
-        if ((reqCapacity & 15) == 0) {
+        if ((reqCapacity & 15) == 0) {      // 如果reqCapacity是16的整数倍
             return reqCapacity;
         }
 
-        return (reqCapacity & ~15) + 16;
+        return (reqCapacity & ~15) + 16;   //否则，向上取值，使其为16的整数倍
     }
 
+    //返回对齐容量 返回的值只可能大于等于入参
     int alignCapacity(int reqCapacity) {
-        int delta = reqCapacity & directMemoryCacheAlignmentMask;
+        int delta = reqCapacity & directMemoryCacheAlignmentMask;                               // delta = reqCapacity % directMemoryCacheAlignment
         return delta == 0 ? reqCapacity : reqCapacity + directMemoryCacheAlignment - delta;
     }
 
@@ -725,40 +740,29 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         private int offsetCacheLine(ByteBuffer memory) {
             // We can only calculate the offset if Unsafe is present as otherwise directBufferAddress(...) will
             // throw an NPE.
-            return HAS_UNSAFE ?
-                    (int) (PlatformDependent.directBufferAddress(memory) & directMemoryCacheAlignmentMask) : 0;
+            return HAS_UNSAFE ? (int) (PlatformDependent.directBufferAddress(memory) & directMemoryCacheAlignmentMask) : 0;
         }
 
         @Override
-        protected PoolChunk<ByteBuffer> newChunk(int pageSize, int maxOrder,
-                int pageShifts, int chunkSize) {
+        protected PoolChunk<ByteBuffer> newChunk(int pageSize, int maxOrder, int pageShifts, int chunkSize) {
             if (directMemoryCacheAlignment == 0) {
-                return new PoolChunk<ByteBuffer>(this,
-                        allocateDirect(chunkSize), pageSize, maxOrder,
-                        pageShifts, chunkSize, 0);
+                return new PoolChunk<ByteBuffer>(this, allocateDirect(chunkSize), pageSize, maxOrder, pageShifts, chunkSize, 0);
             }
-            final ByteBuffer memory = allocateDirect(chunkSize
-                    + directMemoryCacheAlignment);
-            return new PoolChunk<ByteBuffer>(this, memory, pageSize,
-                    maxOrder, pageShifts, chunkSize,
-                    offsetCacheLine(memory));
+            final ByteBuffer memory = allocateDirect(chunkSize + directMemoryCacheAlignment);
+            return new PoolChunk<ByteBuffer>(this, memory, pageSize, maxOrder, pageShifts, chunkSize, offsetCacheLine(memory));
         }
 
         @Override
         protected PoolChunk<ByteBuffer> newUnpooledChunk(int capacity) {
             if (directMemoryCacheAlignment == 0) {
-                return new PoolChunk<ByteBuffer>(this,
-                        allocateDirect(capacity), capacity, 0);
+                return new PoolChunk<ByteBuffer>(this, allocateDirect(capacity), capacity, 0);
             }
-            final ByteBuffer memory = allocateDirect(capacity
-                    + directMemoryCacheAlignment);
-            return new PoolChunk<ByteBuffer>(this, memory, capacity,
-                    offsetCacheLine(memory));
+            final ByteBuffer memory = allocateDirect(capacity + directMemoryCacheAlignment);
+            return new PoolChunk<ByteBuffer>(this, memory, capacity, offsetCacheLine(memory));
         }
 
         private static ByteBuffer allocateDirect(int capacity) {
-            return PlatformDependent.useDirectBufferNoCleaner() ?
-                    PlatformDependent.allocateDirectNoCleaner(capacity) : ByteBuffer.allocateDirect(capacity);
+            return PlatformDependent.useDirectBufferNoCleaner() ? PlatformDependent.allocateDirectNoCleaner(capacity) : ByteBuffer.allocateDirect(capacity);
         }
 
         @Override

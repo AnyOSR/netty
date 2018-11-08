@@ -95,7 +95,6 @@ public class FastThreadLocalThread extends Thread {
      */
     @UnstableApi
     public static boolean willCleanupFastThreadLocals(Thread thread) {
-        return thread instanceof FastThreadLocalThread &&
-                ((FastThreadLocalThread) thread).willCleanupFastThreadLocals();
+        return thread instanceof FastThreadLocalThread && ((FastThreadLocalThread) thread).willCleanupFastThreadLocals();
     }
 }

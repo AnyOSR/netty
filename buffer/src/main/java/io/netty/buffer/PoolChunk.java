@@ -197,6 +197,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
         return usage(freeBytes);
     }
 
+    //返回当前chunk的使用率
     private int usage(int freeBytes) {
         if (freeBytes == 0) {
             return 100;
@@ -245,21 +246,21 @@ final class PoolChunk<T> implements PoolChunkMetric {
      * @param id id  为当前page在所在chunk.memoryMap中的索引值
      */
     private void updateParentsFree(int id) {
-        int logChild = depth(id) + 1;     //计算子节点的深度
+        int logChild = depth(id) + 1;      //计算子节点的深度
         while (id > 1) {
-            int parentId = id >>> 1;      //计算父节点在chunk.memoryMap中的索引值
+            int parentId = id >>> 1;       //计算父节点在chunk.memoryMap中的索引值
             byte val1 = value(id);         //当前page的可分配深度
             byte val2 = value(id ^ 1); //当前page的父节点的另一子节点的可分配深度
             logChild -= 1; // in first iteration equals log, subsequently reduce 1 from logChild as we traverse up
 
-            if (val1 == logChild && val2 == logChild) {
+            if (val1 == logChild && val2 == logChild) {    //如果parent的两个子节点都是可分配的
                 setValue(parentId, (byte) (logChild - 1));
-            } else {
+            } else {                                       //否则，取最小值
                 byte val = val1 < val2 ? val1 : val2;
                 setValue(parentId, val);
             }
 
-            id = parentId;
+            id = parentId;          //一直更新
         }
     }
 
@@ -399,12 +400,11 @@ final class PoolChunk<T> implements PoolChunkMetric {
     void initBuf(PooledByteBuf<T> buf, long handle, int reqCapacity) {
         int memoryMapIdx = memoryMapIdx(handle);
         int bitmapIdx = bitmapIdx(handle);
-        if (bitmapIdx == 0) {
+        if (bitmapIdx == 0) {          //等于0，则为 >= page的分配
             byte val = value(memoryMapIdx);
             assert val == unusable : String.valueOf(val);
-            buf.init(this, handle, runOffset(memoryMapIdx) + offset, reqCapacity, runLength(memoryMapIdx),
-                     arena.parent.threadCache());
-        } else {
+            buf.init(this, handle, runOffset(memoryMapIdx) + offset, reqCapacity, runLength(memoryMapIdx), arena.parent.threadCache());
+        } else {                      //init 某一个page的某一个elem
             initBufWithSubpage(buf, handle, bitmapIdx, reqCapacity);
         }
     }
@@ -413,18 +413,17 @@ final class PoolChunk<T> implements PoolChunkMetric {
         initBufWithSubpage(buf, handle, bitmapIdx(handle), reqCapacity);
     }
 
+    //bitmapIdx elem在page中的位置值
     private void initBufWithSubpage(PooledByteBuf<T> buf, long handle, int bitmapIdx, int reqCapacity) {
         assert bitmapIdx != 0;
 
-        int memoryMapIdx = memoryMapIdx(handle);
+        int memoryMapIdx = memoryMapIdx(handle);                      //当前elem所在page在memoryMap中的下标索引
 
-        PoolSubpage<T> subpage = subpages[subpageIdx(memoryMapIdx)];
+        PoolSubpage<T> subpage = subpages[subpageIdx(memoryMapIdx)];  //page偏移
         assert subpage.doNotDestroy;
         assert reqCapacity <= subpage.elemSize;
 
-        buf.init(
-            this, handle,
-            runOffset(memoryMapIdx) + (bitmapIdx & 0x3FFFFFFF) * subpage.elemSize + offset,
+        buf.init(this, handle, runOffset(memoryMapIdx) + (bitmapIdx & 0x3FFFFFFF) * subpage.elemSize + offset,
                 reqCapacity, subpage.elemSize, arena.parent.threadCache());
     }
 

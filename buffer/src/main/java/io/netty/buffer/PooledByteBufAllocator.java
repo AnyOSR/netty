@@ -36,12 +36,12 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
     private static final int DEFAULT_NUM_HEAP_ARENA;
     private static final int DEFAULT_NUM_DIRECT_ARENA;
 
-    private static final int DEFAULT_PAGE_SIZE;                        // 8192 = 2^13 = 2^3 * 2^10 = 8 kb
+    private static final int DEFAULT_PAGE_SIZE;                        // 8192 = 2^13
     private static final int DEFAULT_MAX_ORDER;                        // 11
     private static final int DEFAULT_TINY_CACHE_SIZE;                  // 512
     private static final int DEFAULT_SMALL_CACHE_SIZE;                 // 256
     private static final int DEFAULT_NORMAL_CACHE_SIZE;                // 64
-    private static final int DEFAULT_MAX_CACHED_BUFFER_CAPACITY;       // 32 * 2^10 = 32 kb
+    private static final int DEFAULT_MAX_CACHED_BUFFER_CAPACITY;       // 2^15
     private static final int DEFAULT_CACHE_TRIM_INTERVAL;
     private static final boolean DEFAULT_USE_CACHE_FOR_ALL_THREADS;    //true
     private static final int DEFAULT_DIRECT_MEMORY_CACHE_ALIGNMENT;    //0
@@ -82,7 +82,7 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
          * See https://github.com/netty/netty/issues/3888.
          */
         final int defaultMinNumArena = NettyRuntime.availableProcessors() * 2;
-        final int defaultChunkSize = DEFAULT_PAGE_SIZE << DEFAULT_MAX_ORDER;
+        final int defaultChunkSize = DEFAULT_PAGE_SIZE << DEFAULT_MAX_ORDER;          //
         DEFAULT_NUM_HEAP_ARENA = Math.max(0, SystemPropertyUtil.getInt("io.netty.allocator.numHeapArenas", (int) Math.min(defaultMinNumArena, runtime.maxMemory() / defaultChunkSize / 2 / 3)));
         DEFAULT_NUM_DIRECT_ARENA = Math.max(0, SystemPropertyUtil.getInt("io.netty.allocator.numDirectArenas", (int) Math.min(defaultMinNumArena, PlatformDependent.maxDirectMemory() / defaultChunkSize / 2 / 3)));
 
@@ -129,14 +129,15 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
 
     private final PoolArena<byte[]>[] heapArenas;
     private final PoolArena<ByteBuffer>[] directArenas;
+    private final List<PoolArenaMetric> heapArenaMetrics;
+    private final List<PoolArenaMetric> directArenaMetrics;
+    private final PooledByteBufAllocatorMetric metric;
+
     private final int tinyCacheSize;
     private final int smallCacheSize;
     private final int normalCacheSize;
-    private final List<PoolArenaMetric> heapArenaMetrics;
-    private final List<PoolArenaMetric> directArenaMetrics;
     private final PoolThreadLocalCache threadCache;
     private final int chunkSize;
-    private final PooledByteBufAllocatorMetric metric;
 
     public PooledByteBufAllocator() {
         this(false);
@@ -202,6 +203,7 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
 
         int pageShifts = validateAndCalculatePageShifts(pageSize);
 
+        //创建heapArea
         if (nHeapArena > 0) {
             heapArenas = newArenaArray(nHeapArena);
             List<PoolArenaMetric> metrics = new ArrayList<PoolArenaMetric>(heapArenas.length);
@@ -216,6 +218,7 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
             heapArenaMetrics = Collections.emptyList();
         }
 
+        //创建directArea
         if (nDirectArena > 0) {
             directArenas = newArenaArray(nDirectArena);
             List<PoolArenaMetric> metrics = new ArrayList<PoolArenaMetric>(directArenas.length);
