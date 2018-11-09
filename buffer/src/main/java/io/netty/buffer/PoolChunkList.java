@@ -87,14 +87,14 @@ final class PoolChunkList<T> implements PoolChunkListMetric {
 
         for (PoolChunk<T> cur = head;;) {
             long handle = cur.allocate(normCapacity);
-            if (handle < 0) {
-                cur = cur.next;
+            if (handle < 0) {           //小于0，分配失败
+                cur = cur.next;         //去当前chunk链表的下一个chunk进行分配
                 if (cur == null) {
                     return false;
                 }
-            } else {
+            } else {                                       //分配成功
                 cur.initBuf(buf, handle, reqCapacity);
-                if (cur.usage() >= maxUsage) {
+                if (cur.usage() >= maxUsage) {             //如果chunk的利用率大于当前chunkList的最大利用率，则将当前chunk向后移动
                     remove(cur);
                     nextList.add(cur);
                 }

@@ -150,7 +150,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
 
     // normCapacity/16
     // 根据normCapacity选择其在tinySubpagePools的下标索引
-    // tiny大小定义为511以下，则 512/16 = numTinySubpagePools
+    // tiny大小定义为511以下，则 512/16 = numTinySubpagePools  0~15 16~31 ... 495~511
     static int tinyIdx(int normCapacity) {
         return normCapacity >>> 4;
     }
@@ -158,7 +158,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
     //先有规则，然后有长度
     // numSmallSubpagePools = pageShifts - 9
     // pageSize = 2 ^ pageShifts
-    // 512 <= small内存大小 < pageSize
+    // 512 <= small内存大小 < pageSize   512~1023 1024~2047  ...   2^(pageShifts -1) ~ 2^ pageShifts -1
     static int smallIdx(int normCapacity) {
         int tableIdx = 0;                    //按照当前规则，smallSubpagePools中第i个元素所能容纳的最大normCapacity为 2^(10+x-1)-1 = 2^(9+x)-1
         int i = normCapacity >>> 10;         //又最后一个数组元素能容纳的最大normCapacity为 pageSize-1 = 2^pageShifts -1
@@ -202,7 +202,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
                 table = smallSubpagePools;
             }
 
-            final PoolSubpage<T> head = table[tableIdx];
+            final PoolSubpage<T> head = table[tableIdx];         //找到头节点
 
             /**
              * Synchronize on the head. This is needed as {@link PoolChunk#allocateSubpage(int)} and
@@ -210,7 +210,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
              */
             synchronized (head) {
                 final PoolSubpage<T> s = head.next;
-                if (s != head) {
+                if (s != head) {                                             //如果next不指向自身，刚开始初始化时，每个page的naxt和prev都是指向自身的
                     assert s.doNotDestroy && s.elemSize == normCapacity;
                     long handle = s.allocate();
                     assert handle >= 0;
@@ -219,13 +219,15 @@ abstract class PoolArena<T> implements PoolArenaMetric {
                     return;
                 }
             }
-            synchronized (this) {
+            synchronized (this) {       //如果next指向自身
                 allocateNormal(buf, reqCapacity, normCapacity);
             }
 
             incTinySmallAllocation(tiny);
             return;
         }
+
+        // pageSize <= normCapacity <= chunkSize
         if (normCapacity <= chunkSize) {
             if (cache.allocateNormal(this, buf, reqCapacity, normCapacity)) {
                 // was able to allocate out of the cache so move on
@@ -242,6 +244,8 @@ abstract class PoolArena<T> implements PoolArenaMetric {
     }
 
     // Method must be called inside synchronized(this) { ... } block
+    //从前到后分配，分配成功就返回
+    // 50 25  000 init q0775
     private void allocateNormal(PooledByteBuf<T> buf, int reqCapacity, int normCapacity) {
         if (q050.allocate(buf, reqCapacity, normCapacity) || q025.allocate(buf, reqCapacity, normCapacity) ||
             q000.allocate(buf, reqCapacity, normCapacity) || qInit.allocate(buf, reqCapacity, normCapacity) ||
@@ -250,11 +254,11 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         }
 
         // Add a new chunk.
-        PoolChunk<T> c = newChunk(pageSize, maxOrder, pageShifts, chunkSize);
+        PoolChunk<T> c = newChunk(pageSize, maxOrder, pageShifts, chunkSize);       //都分配失败，则新建chunk
         long handle = c.allocate(normCapacity);
         assert handle > 0;
         c.initBuf(buf, handle, reqCapacity);
-        qInit.add(c);
+        qInit.add(c);                                                               //将新建chunk加入到area中
     }
 
     private void incTinySmallAllocation(boolean tiny) {
@@ -320,6 +324,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         }
     }
 
+    //根据元素大小找到其在smallSubpagePools或者tinySubpagePools的位置
     PoolSubpage<T> findSubpagePoolHead(int elemSize) {
         int tableIdx;
         PoolSubpage<T>[] table;
@@ -351,6 +356,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
             return directMemoryCacheAlignment == 0 ? reqCapacity : alignCapacity(reqCapacity);
         }
 
+        //reqCapacity >=512时，normalizeCapacity一定是512的整数倍且是2的幂次方
         if (!isTiny(reqCapacity)) { // >= 512
             // Doubled
 
@@ -410,17 +416,13 @@ abstract class PoolArena<T> implements PoolArenaMetric {
 
         allocate(parent.threadCache(), buf, newCapacity);
         if (newCapacity > oldCapacity) {
-            memoryCopy(
-                    oldMemory, oldOffset,
-                    buf.memory, buf.offset, oldCapacity);
+            memoryCopy(oldMemory, oldOffset, buf.memory, buf.offset, oldCapacity);
         } else if (newCapacity < oldCapacity) {
             if (readerIndex < newCapacity) {
                 if (writerIndex > newCapacity) {
                     writerIndex = newCapacity;
                 }
-                memoryCopy(
-                        oldMemory, oldOffset + readerIndex,
-                        buf.memory, buf.offset + readerIndex, writerIndex - readerIndex);
+                memoryCopy(oldMemory, oldOffset + readerIndex, buf.memory, buf.offset + readerIndex, writerIndex - readerIndex);
             } else {
                 readerIndex = writerIndex = newCapacity;
             }
@@ -548,8 +550,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
 
     @Override
     public  long numActiveAllocations() {
-        long val = allocationsTiny.value() + allocationsSmall.value() + allocationsHuge.value()
-                - deallocationsHuge.value();
+        long val = allocationsTiny.value() + allocationsSmall.value() + allocationsHuge.value() - deallocationsHuge.value();
         synchronized (this) {
             val += allocationsNormal - (deallocationsTiny + deallocationsSmall + deallocationsNormal);
         }
@@ -643,9 +644,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
                 continue;
             }
 
-            buf.append(StringUtil.NEWLINE)
-                    .append(i)
-                    .append(": ");
+            buf.append(StringUtil.NEWLINE).append(i).append(": ");
             PoolSubpage<?> s = head.next;
             for (;;) {
                 buf.append(s);
@@ -712,8 +711,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
 
         @Override
         protected PooledByteBuf<byte[]> newByteBuf(int maxCapacity) {
-            return HAS_UNSAFE ? PooledUnsafeHeapByteBuf.newUnsafeInstance(maxCapacity)
-                    : PooledHeapByteBuf.newInstance(maxCapacity);
+            return HAS_UNSAFE ? PooledUnsafeHeapByteBuf.newUnsafeInstance(maxCapacity) : PooledHeapByteBuf.newInstance(maxCapacity);
         }
 
         @Override
@@ -737,15 +735,17 @@ abstract class PoolArena<T> implements PoolArenaMetric {
             return true;
         }
 
+        //0 或者 memory.address - memory.address % directMemoryCacheAlignment
         private int offsetCacheLine(ByteBuffer memory) {
             // We can only calculate the offset if Unsafe is present as otherwise directBufferAddress(...) will
             // throw an NPE.
             return HAS_UNSAFE ? (int) (PlatformDependent.directBufferAddress(memory) & directMemoryCacheAlignmentMask) : 0;
         }
 
+        //新建PoolChunk
         @Override
         protected PoolChunk<ByteBuffer> newChunk(int pageSize, int maxOrder, int pageShifts, int chunkSize) {
-            if (directMemoryCacheAlignment == 0) {
+            if (directMemoryCacheAlignment == 0) {   //不需要对齐
                 return new PoolChunk<ByteBuffer>(this, allocateDirect(chunkSize), pageSize, maxOrder, pageShifts, chunkSize, 0);
             }
             final ByteBuffer memory = allocateDirect(chunkSize + directMemoryCacheAlignment);
@@ -790,9 +790,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
             }
 
             if (HAS_UNSAFE) {
-                PlatformDependent.copyMemory(
-                        PlatformDependent.directBufferAddress(src) + srcOffset,
-                        PlatformDependent.directBufferAddress(dst) + dstOffset, length);
+                PlatformDependent.copyMemory(PlatformDependent.directBufferAddress(src) + srcOffset, PlatformDependent.directBufferAddress(dst) + dstOffset, length);
             } else {
                 // We must duplicate the NIO buffers because they may be accessed by other Netty buffers.
                 src = src.duplicate();

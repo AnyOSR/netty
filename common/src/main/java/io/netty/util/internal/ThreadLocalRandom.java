@@ -73,8 +73,7 @@ public final class ThreadLocalRandom extends Random {
         long initialSeedUniquifier = ThreadLocalRandom.initialSeedUniquifier;
         if (initialSeedUniquifier == 0) {
             // Use the system property value.
-            ThreadLocalRandom.initialSeedUniquifier = initialSeedUniquifier =
-                    SystemPropertyUtil.getLong("io.netty.initialSeedUniquifier", 0);
+            ThreadLocalRandom.initialSeedUniquifier = initialSeedUniquifier = SystemPropertyUtil.getLong("io.netty.initialSeedUniquifier", 0);
         }
 
         // Otherwise, generate one.
@@ -117,10 +116,7 @@ public final class ThreadLocalRandom extends Random {
                     long waitTime = deadLine - System.nanoTime();
                     if (waitTime <= 0) {
                         generatorThread.interrupt();
-                        logger.warn(
-                                "Failed to generate a seed from SecureRandom within {} seconds. " +
-                                        "Not enough entrophy?", timeoutSeconds
-                        );
+                        logger.warn("Failed to generate a seed from SecureRandom within {} seconds. " + "Not enough entrophy?", timeoutSeconds);
                         break;
                     }
 
@@ -169,9 +165,7 @@ public final class ThreadLocalRandom extends Random {
 
             if (seedUniquifier.compareAndSet(current, next)) {
                 if (current == 0 && logger.isDebugEnabled()) {
-                    logger.debug(String.format(
-                            "-Dio.netty.initialSeedUniquifier: 0x%016x (took %d ms)",
-                            actualCurrent, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)));
+                    logger.debug(String.format("-Dio.netty.initialSeedUniquifier: 0x%016x (took %d ms)", actualCurrent, TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)));
                 }
                 return next ^ System.nanoTime();
             }

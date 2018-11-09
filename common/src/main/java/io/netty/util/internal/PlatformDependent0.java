@@ -36,19 +36,19 @@ import static io.netty.util.internal.ObjectUtil.checkNotNull;
 final class PlatformDependent0 {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(PlatformDependent0.class);
-    private static final long ADDRESS_FIELD_OFFSET;
-    private static final long BYTE_ARRAY_BASE_OFFSET;
-    private static final Constructor<?> DIRECT_BUFFER_CONSTRUCTOR;
+    private static final long ADDRESS_FIELD_OFFSET;                     //directBuffer.address字段偏移量
+    private static final long BYTE_ARRAY_BASE_OFFSET;                   //byte[]的第一个元素的偏移量
+    private static final Constructor<?> DIRECT_BUFFER_CONSTRUCTOR;      //directBuffer的构造函数
     private static final boolean IS_EXPLICIT_NO_UNSAFE = explicitNoUnsafe0();
-    private static final Method ALLOCATE_ARRAY_METHOD;
+    private static final Method ALLOCATE_ARRAY_METHOD;                  //jdk.internal.misc.Unsafe.allocateUninitializedArray(int)方法
     private static final int JAVA_VERSION = javaVersion0();
     private static final boolean IS_ANDROID = isAndroid0();
 
     private static final Throwable UNSAFE_UNAVAILABILITY_CAUSE;
-    private static final Object INTERNAL_UNSAFE;
+    private static final Object INTERNAL_UNSAFE;                         //jdk.internal.misc.Unsafe
     private static final boolean IS_EXPLICIT_TRY_REFLECTION_SET_ACCESSIBLE = explicitTryReflectionSetAccessible0();
 
-    static final Unsafe UNSAFE;
+    static final Unsafe UNSAFE;                      // sun.misc.Unsafe.theUnsafe
 
     /**
      * Limits the number of bytes to copy per {@link Unsafe#copyMemory(long, long, long)} to allow safepoint polling
@@ -73,10 +73,10 @@ final class PlatformDependent0 {
             unsafe = null;
             internalUnsafe = null;
         } else {
-            direct = ByteBuffer.allocateDirect(1);
+            direct = ByteBuffer.allocateDirect(1);                                                            //创建DirectByteBuffer的实例
 
             // attempt to access field Unsafe#theUnsafe
-            final Object maybeUnsafe = AccessController.doPrivileged(new PrivilegedAction<Object>() {
+            final Object maybeUnsafe = AccessController.doPrivileged(new PrivilegedAction<Object>() {          //获取unSafe实例(可能是，可能不是)
                 @Override
                 public Object run() {
                     try {
@@ -107,11 +107,11 @@ final class PlatformDependent0 {
             // is an instanceof Unsafe and reversing the if and else blocks; this is because an
             // instanceof check against Unsafe will trigger a class load and we might not have
             // the runtime permission accessClassInPackage.sun.misc
-            if (maybeUnsafe instanceof Throwable) {
+            if (maybeUnsafe instanceof Throwable) {                                                                 //如果maybeUnsafe是Throwable，则之前获取的不是unSafe实例
                 unsafe = null;
                 unsafeUnavailabilityCause = (Throwable) maybeUnsafe;
                 logger.debug("sun.misc.Unsafe.theUnsafe: unavailable", (Throwable) maybeUnsafe);
-            } else {
+            } else {                                                                                                  //否则，获取到unSafe实例
                 unsafe = (Unsafe) maybeUnsafe;
                 logger.debug("sun.misc.Unsafe.theUnsafe: available");
             }
@@ -119,14 +119,13 @@ final class PlatformDependent0 {
             // ensure the unsafe supports all necessary methods to work around the mistake in the latest OpenJDK
             // https://github.com/netty/netty/issues/1061
             // http://www.mail-archive.com/jdk6-dev@openjdk.java.net/msg00698.html
-            if (unsafe != null) {
+            if (unsafe != null) {                                                                                      //尝试获取unSafe的copyMemory方法
                 final Unsafe finalUnsafe = unsafe;
                 final Object maybeException = AccessController.doPrivileged(new PrivilegedAction<Object>() {
                     @Override
                     public Object run() {
                         try {
-                            finalUnsafe.getClass().getDeclaredMethod(
-                                    "copyMemory", Object.class, long.class, Object.class, long.class, long.class);
+                            finalUnsafe.getClass().getDeclaredMethod("copyMemory", Object.class, long.class, Object.class, long.class, long.class);
                             return null;
                         } catch (NoSuchMethodException e) {
                             return e;
@@ -136,17 +135,17 @@ final class PlatformDependent0 {
                     }
                 });
 
-                if (maybeException == null) {
+                if (maybeException == null) {                                                                            //返回null，则成功获取copyMemory方法
                     logger.debug("sun.misc.Unsafe.copyMemory: available");
                 } else {
                     // Unsafe.copyMemory(Object, long, Object, long, long) unavailable.
-                    unsafe = null;
+                    unsafe = null;                                                                                        //如果没找到copyMemory方法，则会将unsafe置null，usSafe不可用？
                     unsafeUnavailabilityCause = (Throwable) maybeException;
                     logger.debug("sun.misc.Unsafe.copyMemory: unavailable", (Throwable) maybeException);
                 }
             }
 
-            if (unsafe != null) {
+            if (unsafe != null) {                    //上面的操作都成功
                 final Unsafe finalUnsafe = unsafe;
 
                 // attempt to access field Buffer#address
@@ -154,17 +153,17 @@ final class PlatformDependent0 {
                     @Override
                     public Object run() {
                         try {
-                            final Field field = Buffer.class.getDeclaredField("address");
+                            final Field field = Buffer.class.getDeclaredField("address");                            //获取direct buffers的address字段
                             // Use Unsafe to read value of the address field. This way it will not fail on JDK9+ which
                             // will forbid changing the access level via reflection.
-                            final long offset = finalUnsafe.objectFieldOffset(field);
-                            final long address = finalUnsafe.getLong(direct, offset);
+                            final long offset = finalUnsafe.objectFieldOffset(field);                              //获取address字段 的偏移量
+                            final long address = finalUnsafe.getLong(direct, offset);                              //获取direct实例的address值
 
                             // if direct really is a direct buffer, address will be non-zero
-                            if (address == 0) {
+                            if (address == 0) {                                                                     //如果address为0，则失败
                                 return null;
                             }
-                            return field;
+                            return field;                                                                           //否则，返回address field
                         } catch (NoSuchFieldException e) {
                             return e;
                         } catch (SecurityException e) {
@@ -173,10 +172,10 @@ final class PlatformDependent0 {
                     }
                 });
 
-                if (maybeAddressField instanceof Field) {
+                if (maybeAddressField instanceof Field) {                                           //如果是field，则成功
                     addressField = (Field) maybeAddressField;
                     logger.debug("java.nio.Buffer.address: available");
-                } else {
+                } else {                                                                            //如果失败，则将unsafe置null，失败都会将unSafe置null
                     unsafeUnavailabilityCause = (Throwable) maybeAddressField;
                     logger.debug("java.nio.Buffer.address: unavailable", (Throwable) maybeAddressField);
 
@@ -189,7 +188,7 @@ final class PlatformDependent0 {
             if (unsafe != null) {
                 // There are assumptions made where ever BYTE_ARRAY_BASE_OFFSET is used (equals, hashCodeAscii, and
                 // primitive accessors) that arrayIndexScale == 1, and results are undefined if this is not the case.
-                long byteArrayIndexScale = unsafe.arrayIndexScale(byte[].class);
+                long byteArrayIndexScale = unsafe.arrayIndexScale(byte[].class);                                        //获取数组的增量因子 byte大小为一字节
                 if (byteArrayIndexScale != 1) {
                     logger.debug("unsafe.arrayIndexScale is {} (expected: 1). Not using unsafe.", byteArrayIndexScale);
                     unsafeUnavailabilityCause = new UnsupportedOperationException("Unexpected unsafe.arrayIndexScale");
@@ -197,8 +196,8 @@ final class PlatformDependent0 {
                 }
             }
         }
-        UNSAFE_UNAVAILABILITY_CAUSE = unsafeUnavailabilityCause;
-        UNSAFE = unsafe;
+        UNSAFE_UNAVAILABILITY_CAUSE = unsafeUnavailabilityCause;                    //给UNSAFE_UNAVAILABILITY_CAUSE赋值
+        UNSAFE = unsafe;                                                            //设置unSafe实例
 
         if (unsafe == null) {
             BYTE_ARRAY_BASE_OFFSET = -1;
@@ -215,8 +214,7 @@ final class PlatformDependent0 {
                             @Override
                             public Object run() {
                                 try {
-                                    final Constructor<?> constructor =
-                                            direct.getClass().getDeclaredConstructor(long.class, int.class);
+                                    final Constructor<?> constructor = direct.getClass().getDeclaredConstructor(long.class, int.class);  //获取direct实例的构造器 address cap
                                     Throwable cause = ReflectionUtil.trySetAccessible(constructor, true);
                                     if (cause != null) {
                                         return cause;
@@ -245,9 +243,7 @@ final class PlatformDependent0 {
                         directBufferConstructor = null;
                     }
                 } else {
-                    logger.debug(
-                            "direct buffer constructor: unavailable",
-                            (Throwable) maybeDirectBufferConstructor);
+                    logger.debug("direct buffer constructor: unavailable", (Throwable) maybeDirectBufferConstructor);
                     directBufferConstructor = null;
                 }
             } finally {
@@ -255,15 +251,14 @@ final class PlatformDependent0 {
                     UNSAFE.freeMemory(address);
                 }
             }
-            DIRECT_BUFFER_CONSTRUCTOR = directBufferConstructor;
-            ADDRESS_FIELD_OFFSET = objectFieldOffset(addressField);
+            DIRECT_BUFFER_CONSTRUCTOR = directBufferConstructor;                      //direct buffer的构造器
+            ADDRESS_FIELD_OFFSET = objectFieldOffset(addressField);                   //directBuffer address字段的偏移量
             boolean unaligned;
             Object maybeUnaligned = AccessController.doPrivileged(new PrivilegedAction<Object>() {
                 @Override
                 public Object run() {
                     try {
-                        Class<?> bitsClass =
-                                Class.forName("java.nio.Bits", false, getSystemClassLoader());
+                        Class<?> bitsClass = Class.forName("java.nio.Bits", false, getSystemClassLoader());
                         Method unalignedMethod = bitsClass.getDeclaredMethod("unaligned");
                         Throwable cause = ReflectionUtil.trySetAccessible(unalignedMethod, true);
                         if (cause != null) {
@@ -295,8 +290,8 @@ final class PlatformDependent0 {
                 logger.debug("java.nio.Bits.unaligned: unavailable {}", unaligned, t);
             }
 
-            UNALIGNED = unaligned;
-            BYTE_ARRAY_BASE_OFFSET = arrayBaseOffset();
+            UNALIGNED = unaligned;                                       //对齐方式
+            BYTE_ARRAY_BASE_OFFSET = arrayBaseOffset();                  //byte[] 第一个元素的起始偏移量
 
             if (javaVersion() >= 9) {
                 Object maybeException = AccessController.doPrivileged(new PrivilegedAction<Object>() {
@@ -305,8 +300,7 @@ final class PlatformDependent0 {
                         try {
                             // Java9 has jdk.internal.misc.Unsafe and not all methods are propagated to
                             // sun.misc.Unsafe
-                            Class<?> internalUnsafeClass = getClassLoader(PlatformDependent0.class)
-                                    .loadClass("jdk.internal.misc.Unsafe");
+                            Class<?> internalUnsafeClass = getClassLoader(PlatformDependent0.class).loadClass("jdk.internal.misc.Unsafe");
                             Method method = internalUnsafeClass.getDeclaredMethod("getUnsafe");
                             return method.invoke(null);
                         } catch (Throwable e) {
@@ -321,8 +315,7 @@ final class PlatformDependent0 {
                         @Override
                         public Object run() {
                             try {
-                                return finalInternalUnsafe.getClass().getDeclaredMethod(
-                                        "allocateUninitializedArray", Class.class, int.class);
+                                return finalInternalUnsafe.getClass().getDeclaredMethod("allocateUninitializedArray", Class.class, int.class);
                             } catch (NoSuchMethodException e) {
                                 return e;
                             } catch (SecurityException e) {
@@ -346,21 +339,19 @@ final class PlatformDependent0 {
                 }
 
                 if (maybeException instanceof Throwable) {
-                    logger.debug("jdk.internal.misc.Unsafe.allocateUninitializedArray(int): unavailable",
-                            (Throwable) maybeException);
+                    logger.debug("jdk.internal.misc.Unsafe.allocateUninitializedArray(int): unavailable", (Throwable) maybeException);
                 } else {
                     logger.debug("jdk.internal.misc.Unsafe.allocateUninitializedArray(int): available");
                 }
             } else {
                 logger.debug("jdk.internal.misc.Unsafe.allocateUninitializedArray(int): unavailable prior to Java9");
             }
-            ALLOCATE_ARRAY_METHOD = allocateArrayMethod;
+            ALLOCATE_ARRAY_METHOD = allocateArrayMethod;                    // allocateUninitializedArray(int)方法
         }
 
         INTERNAL_UNSAFE = internalUnsafe;
 
-        logger.debug("java.nio.DirectByteBuffer.<init>(long, int): {}",
-                DIRECT_BUFFER_CONSTRUCTOR != null ? "available" : "unavailable");
+        logger.debug("java.nio.DirectByteBuffer.<init>(long, int): {}", DIRECT_BUFFER_CONSTRUCTOR != null ? "available" : "unavailable");
     }
 
     static boolean isExplicitNoUnsafe() {
@@ -435,6 +426,8 @@ final class PlatformDependent0 {
         }
     }
 
+    //创建ByteBuffer
+    //address是已经分配好内存的起始地址
     static ByteBuffer newDirectBuffer(long address, int capacity) {
         ObjectUtil.checkPositiveOrZero(capacity, "capacity");
 
@@ -449,6 +442,7 @@ final class PlatformDependent0 {
         }
     }
 
+    //获取buffer的address字段值
     static long directBufferAddress(ByteBuffer buffer) {
         return getLong(buffer, ADDRESS_FIELD_OFFSET);
     }

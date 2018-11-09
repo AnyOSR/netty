@@ -32,8 +32,7 @@ import static java.lang.Math.max;
  * anymore.
  */
 public final class ObjectCleaner {
-    private static final int REFERENCE_QUEUE_POLL_TIMEOUT_MS =
-            max(500, getInt("io.netty.util.internal.ObjectCleaner.refQueuePollTimeout", 10000));
+    private static final int REFERENCE_QUEUE_POLL_TIMEOUT_MS = max(500, getInt("io.netty.util.internal.ObjectCleaner.refQueuePollTimeout", 10000));
 
     // Package-private for testing
     static final String CLEANER_THREAD_NAME = ObjectCleaner.class.getSimpleName() + "Thread";
@@ -92,8 +91,8 @@ public final class ObjectCleaner {
      * anymore because it is not a cheap way to handle the cleanup.
      */
     public static void register(Object object, Runnable cleanupTask) {
-        AutomaticCleanerReference reference = new AutomaticCleanerReference(object,
-                ObjectUtil.checkNotNull(cleanupTask, "cleanupTask"));
+        //AutomaticCleanerReference是一个WeakReference，且生成AutomaticCleanerReference实例的时候，注册object 到queue了
+        AutomaticCleanerReference reference = new AutomaticCleanerReference(object, ObjectUtil.checkNotNull(cleanupTask, "cleanupTask"));
         // Its important to add the reference to the LIVE_SET before we access CLEANER_RUNNING to ensure correct
         // behavior in multi-threaded environments.
         LIVE_SET.add(reference);

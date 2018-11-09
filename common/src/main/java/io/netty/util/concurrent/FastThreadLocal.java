@@ -44,6 +44,8 @@ import java.util.Set;
  */
 public class FastThreadLocal<V> {
 
+    // V 就是UnpaddedInternalThreadLocalMap.indexedVariables的实际类型
+    //variablesToRemoveIndex处是一个Set<FastThreadLocal<?>>
     private static final int variablesToRemoveIndex = InternalThreadLocalMap.nextVariableIndex();
 
     /**
@@ -52,7 +54,7 @@ public class FastThreadLocal<V> {
      * manage.
      */
     public static void removeAll() {
-        InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.getIfSet();
+        InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.getIfSet();   //获取当前线程的 线程局部变量
         if (threadLocalMap == null) {
             return;
         }
@@ -62,14 +64,13 @@ public class FastThreadLocal<V> {
             if (v != null && v != InternalThreadLocalMap.UNSET) {
                 @SuppressWarnings("unchecked")
                 Set<FastThreadLocal<?>> variablesToRemove = (Set<FastThreadLocal<?>>) v;
-                FastThreadLocal<?>[] variablesToRemoveArray =
-                        variablesToRemove.toArray(new FastThreadLocal[variablesToRemove.size()]);
+                FastThreadLocal<?>[] variablesToRemoveArray = variablesToRemove.toArray(new FastThreadLocal[variablesToRemove.size()]);
                 for (FastThreadLocal<?> tlv: variablesToRemoveArray) {
                     tlv.remove(threadLocalMap);
                 }
             }
         } finally {
-            InternalThreadLocalMap.remove();
+            InternalThreadLocalMap.remove();        //清除当前线程 局部变量
         }
     }
 
@@ -123,7 +124,6 @@ public class FastThreadLocal<V> {
     }
 
     private final int index;
-
     private final int cleanerFlagIndex;
 
     public FastThreadLocal() {
@@ -133,10 +133,14 @@ public class FastThreadLocal<V> {
 
     /**
      * Returns the current value for the current thread
+     * 当前线程的值 和当前线程的局部变量不是一个值
      */
+    //variablesToRemoveIndex处是一个Set<FastThreadLocal<?>>
+    //每一个FastThreadLocal都有一个index，index不会等于variablesToRemoveIndex
+    //然后在index处储存了get()的值
     @SuppressWarnings("unchecked")
     public final V get() {
-        InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.get();
+        InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.get();  //获取当前线程的 线程局部变量threadLocalMap
         Object v = threadLocalMap.indexedVariable(index);
         if (v != InternalThreadLocalMap.UNSET) {
             return (V) v;
@@ -149,8 +153,8 @@ public class FastThreadLocal<V> {
 
     private void registerCleaner(final InternalThreadLocalMap threadLocalMap) {
         Thread current = Thread.currentThread();
-        if (FastThreadLocalThread.willCleanupFastThreadLocals(current) ||
-            threadLocalMap.indexedVariable(cleanerFlagIndex) != InternalThreadLocalMap.UNSET) {
+        //如果
+        if (FastThreadLocalThread.willCleanupFastThreadLocals(current) || threadLocalMap.indexedVariable(cleanerFlagIndex) != InternalThreadLocalMap.UNSET) {
             return;
         }
         // removeIndexedVariable(cleanerFlagIndex) isn't necessary because the finally cleanup is tied to the lifetime
@@ -203,7 +207,7 @@ public class FastThreadLocal<V> {
     public final void set(V value) {
         if (value != InternalThreadLocalMap.UNSET) {
             InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.get();
-            if (setKnownNotUnset(threadLocalMap, value)) {
+            if (setKnownNotUnset(threadLocalMap, value)) {    //没有覆盖之前的值
                 registerCleaner(threadLocalMap);
             }
         } else {
@@ -225,8 +229,9 @@ public class FastThreadLocal<V> {
     /**
      * @return see {@link InternalThreadLocalMap#setIndexedVariable(int, Object)}.
      */
+    //返回true表示没有覆盖掉之前的值
     private boolean setKnownNotUnset(InternalThreadLocalMap threadLocalMap, V value) {
-        if (threadLocalMap.setIndexedVariable(index, value)) {
+        if (threadLocalMap.setIndexedVariable(index, value)) {            //没有覆盖之前的值
             addToVariablesToRemove(threadLocalMap, this);
             return true;
         }
