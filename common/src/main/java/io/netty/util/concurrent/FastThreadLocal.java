@@ -153,7 +153,7 @@ public class FastThreadLocal<V> {
 
     private void registerCleaner(final InternalThreadLocalMap threadLocalMap) {
         Thread current = Thread.currentThread();
-        //如果
+        //如果该线程自己运行完之后会自己清除，或者已经清除过
         if (FastThreadLocalThread.willCleanupFastThreadLocals(current) || threadLocalMap.indexedVariable(cleanerFlagIndex) != InternalThreadLocalMap.UNSET) {
             return;
         }

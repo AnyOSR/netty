@@ -23,6 +23,8 @@ import io.netty.util.internal.UnstableApi;
  */
 public class FastThreadLocalThread extends Thread {
     // This will be set to true if we have a chance to wrap the Runnable.
+    //只有构造函数的参数类型是 FastThreadLocalRunnable时，cleanupFastThreadLocals才为true
+    //FastThreadLocalRunnable run完之后会调用FastThreadLocal.removeAll()清除当前线程的资源
     private final boolean cleanupFastThreadLocals;
 
     private InternalThreadLocalMap threadLocalMap;
@@ -94,6 +96,8 @@ public class FastThreadLocalThread extends Thread {
      * Returns {@code true} if {@link FastThreadLocal#removeAll()} will be called once {@link Thread#run()} completes.
      */
     @UnstableApi
+    //如果当前线程是FastThreadLocalThread且其cleanupFastThreadLocals为true，
+    //则当当前线程run完之后会自动清除掉自己的线程局部变量
     public static boolean willCleanupFastThreadLocals(Thread thread) {
         return thread instanceof FastThreadLocalThread && ((FastThreadLocalThread) thread).willCleanupFastThreadLocals();
     }

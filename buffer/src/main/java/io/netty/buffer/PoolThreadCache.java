@@ -62,8 +62,7 @@ final class PoolThreadCache {
     // TODO: Test if adding padding helps under contention
     //private long pad0, pad1, pad2, pad3, pad4, pad5, pad6, pad7;
 
-    PoolThreadCache(PoolArena<byte[]> heapArena, PoolArena<ByteBuffer> directArena, int tinyCacheSize, int smallCacheSize, int normalCacheSize,
-                    int maxCachedBufferCapacity, int freeSweepAllocationThreshold) {
+    PoolThreadCache(PoolArena<byte[]> heapArena, PoolArena<ByteBuffer> directArena, int tinyCacheSize, int smallCacheSize, int normalCacheSize, int maxCachedBufferCapacity, int freeSweepAllocationThreshold) {
         if (maxCachedBufferCapacity < 0) {
             throw new IllegalArgumentException("maxCachedBufferCapacity: " + maxCachedBufferCapacity + " (expected: >= 0)");
         }
@@ -77,7 +76,7 @@ final class PoolThreadCache {
             numShiftsNormalDirect = log2(directArena.pageSize);
             normalDirectCaches = createNormalCaches(normalCacheSize, maxCachedBufferCapacity, directArena);
 
-            directArena.numThreadCaches.getAndIncrement();
+            directArena.numThreadCaches.getAndIncrement();    //增加 directArena.numThreadCaches，表示由directArena支持的threadCache又多了一个
         } else {
             // No directArea is configured so just null out all caches
             tinySubPageDirectCaches = null;
@@ -93,7 +92,7 @@ final class PoolThreadCache {
             numShiftsNormalHeap = log2(heapArena.pageSize);
             normalHeapCaches = createNormalCaches(normalCacheSize, maxCachedBufferCapacity, heapArena);
 
-            heapArena.numThreadCaches.getAndIncrement();
+            heapArena.numThreadCaches.getAndIncrement();     //增加 heapArena.numThreadCaches，表示由heapArena支持的threadCache又多了一个
         } else {
             // No heapArea is configured so just null out all caches
             tinySubPageHeapCaches = null;
@@ -319,8 +318,7 @@ final class PoolThreadCache {
         }
 
         @Override
-        protected void initBuf(
-                PoolChunk<T> chunk, long handle, PooledByteBuf<T> buf, int reqCapacity) {
+        protected void initBuf(PoolChunk<T> chunk, long handle, PooledByteBuf<T> buf, int reqCapacity) {
             chunk.initBufWithSubpage(buf, handle, reqCapacity);
         }
     }
@@ -334,8 +332,7 @@ final class PoolThreadCache {
         }
 
         @Override
-        protected void initBuf(
-                PoolChunk<T> chunk, long handle, PooledByteBuf<T> buf, int reqCapacity) {
+        protected void initBuf(PoolChunk<T> chunk, long handle, PooledByteBuf<T> buf, int reqCapacity) {
             chunk.initBuf(buf, handle, reqCapacity);
         }
     }
@@ -348,15 +345,14 @@ final class PoolThreadCache {
 
         MemoryRegionCache(int size, SizeClass sizeClass) {
             this.size = MathUtil.safeFindNextPositivePowerOfTwo(size);
-            queue = PlatformDependent.newFixedMpscQueue(this.size);
+            queue = PlatformDependent.newFixedMpscQueue(this.size);       //多生产者单消费者队列
             this.sizeClass = sizeClass;
         }
 
         /**
          * Init the {@link PooledByteBuf} using the provided chunk and handle with the capacity restrictions.
          */
-        protected abstract void initBuf(PoolChunk<T> chunk, long handle,
-                                        PooledByteBuf<T> buf, int reqCapacity);
+        protected abstract void initBuf(PoolChunk<T> chunk, long handle, PooledByteBuf<T> buf, int reqCapacity);
 
         /**
          * Add to cache if not already full.
@@ -434,6 +430,7 @@ final class PoolThreadCache {
             chunk.arena.freeChunk(chunk, handle, sizeClass);
         }
 
+        //entry是循环利用的
         static final class Entry<T> {
             final Handle recyclerHandle;
             PoolChunk<T> chunk;

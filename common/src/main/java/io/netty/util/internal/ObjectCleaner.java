@@ -39,7 +39,7 @@ public final class ObjectCleaner {
     // This will hold a reference to the AutomaticCleanerReference which will be removed once we called cleanup()
     private static final Set<AutomaticCleanerReference> LIVE_SET = new ConcurrentSet<AutomaticCleanerReference>();
     private static final ReferenceQueue<Object> REFERENCE_QUEUE = new ReferenceQueue<Object>();
-    private static final AtomicBoolean CLEANER_RUNNING = new AtomicBoolean(false);
+    private static final AtomicBoolean CLEANER_RUNNING = new AtomicBoolean(false);     //是否有cleaner线程正在运行
     private static final Runnable CLEANER_TASK = new Runnable() {
         @Override
         public void run() {
@@ -47,9 +47,9 @@ public final class ObjectCleaner {
             for (;;) {
                 // Keep on processing as long as the LIVE_SET is not empty and once it becomes empty
                 // See if we can let this thread complete.
-                while (!LIVE_SET.isEmpty()) {
+                while (!LIVE_SET.isEmpty()) {             //只要LIVE_SET非空
                     final AutomaticCleanerReference reference;
-                    try {
+                    try {                                 //尝试从引用队列里面取出被gc的object
                         reference = (AutomaticCleanerReference) REFERENCE_QUEUE.remove(REFERENCE_QUEUE_POLL_TIMEOUT_MS);
                     } catch (InterruptedException ex) {
                         // Just consume and move on
@@ -70,6 +70,7 @@ public final class ObjectCleaner {
 
                 // Its important to first access the LIVE_SET and then CLEANER_RUNNING to ensure correct
                 // behavior in multi-threaded environments.
+                //如果已经为空了，可以完结了，否则，判断是否有cleaner线程正在运行，如果有，完结，否则，继续运行
                 if (LIVE_SET.isEmpty() || !CLEANER_RUNNING.compareAndSet(false, true)) {
                     // There was nothing added after we set STARTED to false or some other cleanup Thread
                     // was started already so its safe to let this Thread complete now.
@@ -98,7 +99,7 @@ public final class ObjectCleaner {
         LIVE_SET.add(reference);
 
         // Check if there is already a cleaner running.
-        if (CLEANER_RUNNING.compareAndSet(false, true)) {
+        if (CLEANER_RUNNING.compareAndSet(false, true)) {      //如果没有cleaner线程正在运行，且当前线程拿到锁
             final Thread cleanupThread = new FastThreadLocalThread(CLEANER_TASK);
             cleanupThread.setPriority(Thread.MIN_PRIORITY);
             // Set to null to ensure we not create classloader leaks by holding a strong reference to the inherited
@@ -118,7 +119,7 @@ public final class ObjectCleaner {
             // Mark this as a daemon thread to ensure that we the JVM can exit if this is the only thread that is
             // running.
             cleanupThread.setDaemon(true);
-            cleanupThread.start();
+            cleanupThread.start();     //执行CLEANER_TASK任务
         }
     }
 

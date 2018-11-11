@@ -421,9 +421,7 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
 
             Thread current = Thread.currentThread();
             if (useCacheForAllThreads || current instanceof FastThreadLocalThread) {
-                return new PoolThreadCache(
-                        heapArena, directArena, tinyCacheSize, smallCacheSize, normalCacheSize,
-                        DEFAULT_MAX_CACHED_BUFFER_CAPACITY, DEFAULT_CACHE_TRIM_INTERVAL);
+                return new PoolThreadCache(heapArena, directArena, tinyCacheSize, smallCacheSize, normalCacheSize, DEFAULT_MAX_CACHED_BUFFER_CAPACITY, DEFAULT_CACHE_TRIM_INTERVAL);
             }
             // No caching so just use 0 as sizes.
             return new PoolThreadCache(heapArena, directArena, 0, 0, 0, 0, 0);
@@ -434,11 +432,11 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
             threadCache.free();
         }
 
+        //找一个当前allocator中，numThreadCaches数目最小的那一个PoolArena
         private <T> PoolArena<T> leastUsedArena(PoolArena<T>[] arenas) {
             if (arenas == null || arenas.length == 0) {
                 return null;
             }
-
             PoolArena<T> minArena = arenas[0];
             for (int i = 1; i < arenas.length; i++) {
                 PoolArena<T> arena = arenas[i];
@@ -446,7 +444,6 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
                     minArena = arena;
                 }
             }
-
             return minArena;
         }
     }
