@@ -142,6 +142,10 @@ public abstract class Recycler<T> {
 
     @SuppressWarnings("unchecked")
     //从对象池中获取一个对象
+    //stack中存放的都是handle,
+    //handle.value才是要回收的值，
+    //表面上回收的都是handle,通过回收handle来回收value，
+    //这样对于所有类型的object的回收，都是一样的
     public final T get() {
         if (maxCapacity == 0) {
             return newObject(NOOP_HANDLE);
@@ -149,8 +153,8 @@ public abstract class Recycler<T> {
         Stack<T> stack = threadLocal.get();   //获取到当前线程的stack<T>
         DefaultHandle handle = stack.pop();
         if (handle == null) {
-            handle = stack.newHandle();
-            handle.value = newObject(handle);
+            handle = stack.newHandle();          //没有待用的handle,创建一个handle
+            handle.value = newObject(handle);    // 创建一个 实际回收类型的实例，其实例会拥有handle的引用，并将该实例赋值给handle.value
         }
         return (T) handle.value;
     }
@@ -172,6 +176,7 @@ public abstract class Recycler<T> {
         return true;
     }
 
+    //创建实际待回收的类型实例，并会将其赋值给handle
     protected abstract T newObject(Handle handle);
 
     final int threadLocalCapacity() {
@@ -200,6 +205,7 @@ public abstract class Recycler<T> {
             this.stack = stack;
         }
 
+        //回收的也是DefaultHandle，通过回收handle来回收DefaultHandle.value
         public void recycle() {
             stack.push(this);
         }

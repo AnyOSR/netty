@@ -298,14 +298,14 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
 
     public static void main(String[] args) {
 //        ByteBuf pooledByteBuf1 =  PooledByteBufAllocator.DEFAULT.newDirectBuffer(800,800);
-//        ByteBuf pooledByteBuf2 =  PooledByteBufAllocator.DEFAULT.newDirectBuffer(800,800);
-//        pooledByteBuf.release();
+        ByteBuf pooledByteBuf2 =  PooledByteBufAllocator.DEFAULT.newDirectBuffer(800,800);
+        pooledByteBuf2.release();
 //        pooledByteBuf =  PooledByteBufAllocator.DEFAULT.newDirectBuffer(32,64);
 
-        for(int i = 0 ;i<=8;i++){
-            Thread runnable = new AllocateMemory();
-            runnable.start();
-        }
+//        for(int i = 0 ;i<=8;i++){
+//            Thread runnable = new AllocateMemory();
+//            runnable.start();
+//        }
     }
 
     public static class AllocateMemory extends Thread{
