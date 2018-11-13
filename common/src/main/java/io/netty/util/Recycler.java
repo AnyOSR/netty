@@ -97,6 +97,7 @@ public abstract class Recycler<T> {
 
     //线程局部变量 存储了一个 Stack<T> ，Stack里面存的是对象池里面的对象？
     //真正的存储空间？
+    //每一个recycler实例里面都有一个threadlocal，这样就不会有冲突了
     private final FastThreadLocal<Stack<T>> threadLocal = new FastThreadLocal<Stack<T>>() {
         @Override
         protected Stack<T> initialValue() {
@@ -145,7 +146,7 @@ public abstract class Recycler<T> {
         if (maxCapacity == 0) {
             return newObject(NOOP_HANDLE);
         }
-        Stack<T> stack = threadLocal.get();
+        Stack<T> stack = threadLocal.get();   //获取到当前线程的stack<T>
         DefaultHandle handle = stack.pop();
         if (handle == null) {
             handle = stack.newHandle();

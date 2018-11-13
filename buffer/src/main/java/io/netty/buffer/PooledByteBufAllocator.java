@@ -125,6 +125,7 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
         }
     }
 
+    //一个默认的PooledByteBufAllocator，单例
     public static final PooledByteBufAllocator DEFAULT = new PooledByteBufAllocator(PlatformDependent.directBufferPreferred());
 
     private final PoolArena<byte[]>[] heapArenas;
@@ -237,11 +238,8 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
 
     @Deprecated
     @SuppressWarnings("UnusedParameters")
-    public PooledByteBufAllocator(boolean preferDirect, int nHeapArena, int nDirectArena, int pageSize, int maxOrder,
-                                  int tinyCacheSize, int smallCacheSize, int normalCacheSize,
-                                  long cacheThreadAliveCheckInterval) {
-        this(preferDirect, nHeapArena, nDirectArena, pageSize, maxOrder,
-             tinyCacheSize, smallCacheSize, normalCacheSize);
+    public PooledByteBufAllocator(boolean preferDirect, int nHeapArena, int nDirectArena, int pageSize, int maxOrder, int tinyCacheSize, int smallCacheSize, int normalCacheSize, long cacheThreadAliveCheckInterval) {
+        this(preferDirect, nHeapArena, nDirectArena, pageSize, maxOrder, tinyCacheSize, smallCacheSize, normalCacheSize);
     }
 
     @SuppressWarnings("unchecked")
@@ -300,8 +298,8 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
 
     @Override
     protected ByteBuf newDirectBuffer(int initialCapacity, int maxCapacity) {
-        PoolThreadCache cache = threadCache.get();
-        PoolArena<ByteBuffer> directArena = cache.directArena;
+        PoolThreadCache cache = threadCache.get();                  //获取当前线程的局部变量 PoolThreadCache   线程专有
+        PoolArena<ByteBuffer> directArena = cache.directArena;      //获取PoolThreadCache.directArena        被多个线程共享
 
         final ByteBuf buf;
         if (directArena != null) {

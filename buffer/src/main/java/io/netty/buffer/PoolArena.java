@@ -142,6 +142,8 @@ abstract class PoolArena<T> implements PoolArenaMetric {
 
     abstract boolean isDirect();
 
+    //cache 当前调用线程的PoolThreadCache
+    //this为 PoolThreadCache.directArena
     PooledByteBuf<T> allocate(PoolThreadCache cache, int reqCapacity, int maxCapacity) {
         PooledByteBuf<T> buf = newByteBuf(maxCapacity);
         allocate(cache, buf, reqCapacity);
@@ -180,6 +182,8 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         return (normCapacity & 0xFFFFFE00) == 0;      // normCapacity <= 2^9-1 = 511 < 512
     }
 
+    //cache 线程局部变量
+    //对象池 get出来的buf
     private void allocate(PoolThreadCache cache, PooledByteBuf<T> buf, final int reqCapacity) {
         final int normCapacity = normalizeCapacity(reqCapacity);
         if (isTinyOrSmall(normCapacity)) { // normCapacity < pageSize
