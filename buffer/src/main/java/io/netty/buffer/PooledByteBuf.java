@@ -48,8 +48,8 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
         init0(chunk, 0, chunk.offset, length, length, null);
     }
 
-    //bytebuf和memory关联的一个步骤
-    //实际上只有chunk拥有内存，subPage只是利用了chunk的某一个内存片段
+    //bytebuf和poolarea内存管理结构关联的一个步骤
+    //只有chunk拥有内存，subPage只是利用了chunk的某一个内存片段
     //然后利用offset，handle这些参数来指定内存范围
     private void init0(PoolChunk<T> chunk, long handle, int offset, int length, int maxLength, PoolThreadCache cache) {
         assert handle >= 0;
@@ -145,6 +145,7 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
 
     protected abstract ByteBuffer newInternalNioBuffer(T memory);
 
+    //释放当前buf
     @Override
     protected final void deallocate() {
         if (handle >= 0) {

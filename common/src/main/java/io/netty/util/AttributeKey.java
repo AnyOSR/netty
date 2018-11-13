@@ -27,6 +27,7 @@ import static io.netty.util.internal.ObjectUtil.checkNotNull;
  *
  *
  * @param <T>   the type of the {@link Attribute} which can be accessed via this {@link AttributeKey}.
+ *           name是唯一的，每一个AttributeKey都有一个唯一的name
  */
 @SuppressWarnings({ "UnusedDeclaration", "deprecation" }) // 'T' is used only at compile time
 public final class AttributeKey<T> extends UniqueName {

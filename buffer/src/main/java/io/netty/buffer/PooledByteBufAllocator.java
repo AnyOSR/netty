@@ -296,6 +296,28 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
         return toLeakAwareBuffer(buf);
     }
 
+    public static void main(String[] args) {
+//        ByteBuf pooledByteBuf1 =  PooledByteBufAllocator.DEFAULT.newDirectBuffer(800,800);
+//        ByteBuf pooledByteBuf2 =  PooledByteBufAllocator.DEFAULT.newDirectBuffer(800,800);
+//        pooledByteBuf.release();
+//        pooledByteBuf =  PooledByteBufAllocator.DEFAULT.newDirectBuffer(32,64);
+
+        for(int i = 0 ;i<=8;i++){
+            Thread runnable = new AllocateMemory();
+            runnable.start();
+        }
+    }
+
+    public static class AllocateMemory extends Thread{
+
+        @Override
+        public void run() {
+            ByteBuf temp = PooledByteBufAllocator.DEFAULT.newDirectBuffer(800,800);
+            temp.release();
+        }
+    }
+
+
     @Override
     protected ByteBuf newDirectBuffer(int initialCapacity, int maxCapacity) {
         PoolThreadCache cache = threadCache.get();                  //获取当前线程的局部变量 PoolThreadCache   线程专有
@@ -436,12 +458,16 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator implements 
                 return null;
             }
             PoolArena<T> minArena = arenas[0];
+            int count = 0;
+
             for (int i = 1; i < arenas.length; i++) {
                 PoolArena<T> arena = arenas[i];
                 if (arena.numThreadCaches.get() < minArena.numThreadCaches.get()) {
                     minArena = arena;
+                    count = i;
                 }
             }
+            System.out.println(count + Thread.currentThread().getName());
             return minArena;
         }
     }

@@ -530,8 +530,7 @@ public final class PlatformDependent {
                 long usedMemory = DIRECT_MEMORY_COUNTER.get();
                 long newUsedMemory = usedMemory + capacity;
                 if (newUsedMemory > DIRECT_MEMORY_LIMIT) {
-                    throw new OutOfDirectMemoryError("failed to allocate " + capacity
-                            + " byte(s) of direct memory (used: " + usedMemory + ", max: " + DIRECT_MEMORY_LIMIT + ')');
+                    throw new OutOfDirectMemoryError("failed to allocate " + capacity + " byte(s) of direct memory (used: " + usedMemory + ", max: " + DIRECT_MEMORY_LIMIT + ')');
                 }
                 if (DIRECT_MEMORY_COUNTER.compareAndSet(usedMemory, newUsedMemory)) {
                     break;

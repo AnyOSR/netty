@@ -24,6 +24,7 @@ import static io.netty.util.internal.ObjectUtil.checkNotNull;
  * @deprecated Known to have problems with class loaders.
  *
  * Defines a name that must be unique in the map that is provided during construction.
+ * 每一个UniqueName实例都有一个唯一的id
  */
 @Deprecated
 public class UniqueName implements Comparable<UniqueName> {

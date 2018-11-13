@@ -414,7 +414,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
     }
 
     //bitmapIdx elem在page中的位置值
-    //
+    //关键
     private void initBufWithSubpage(PooledByteBuf<T> buf, long handle, int bitmapIdx, int reqCapacity) {
         assert bitmapIdx != 0;
 

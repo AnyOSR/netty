@@ -48,11 +48,9 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class AbstractNioChannel extends AbstractChannel {
 
-    private static final InternalLogger logger =
-            InternalLoggerFactory.getInstance(AbstractNioChannel.class);
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractNioChannel.class);
 
-    private static final ClosedChannelException DO_CLOSE_CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(
-            new ClosedChannelException(), AbstractNioChannel.class, "doClose()");
+    private static final ClosedChannelException DO_CLOSE_CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(new ClosedChannelException(), AbstractNioChannel.class, "doClose()");
 
     private final SelectableChannel ch;
     protected final int readInterestOp;
@@ -86,8 +84,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                 ch.close();
             } catch (IOException e2) {
                 if (logger.isWarnEnabled()) {
-                    logger.warn(
-                            "Failed to close a partially initialized socket.", e2);
+                    logger.warn("Failed to close a partially initialized socket.", e2);
                 }
             }
 

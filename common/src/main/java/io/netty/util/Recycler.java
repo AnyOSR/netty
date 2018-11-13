@@ -155,6 +155,7 @@ public abstract class Recycler<T> {
         return (T) handle.value;
     }
 
+    //回收o，且handle.value 为o
     public final boolean recycle(T o, Handle handle) {
         if (handle == NOOP_HANDLE) {
             return false;
@@ -183,6 +184,9 @@ public abstract class Recycler<T> {
 
     public interface Handle { }
 
+    //拥有recycle所需要的所有信息
+    //stack:回收到哪儿
+    //value:待回收的值
     static final class DefaultHandle implements Handle {
         private int lastRecycledId;
         private int recycleId;

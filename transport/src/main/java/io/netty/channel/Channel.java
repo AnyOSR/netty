@@ -36,16 +36,16 @@ import java.net.SocketAddress;
  * <p>
  * A channel provides a user:
  * <ul>
- * <li>the current state of the channel (e.g. is it open? is it connected?),</li>
- * <li>the {@linkplain ChannelConfig configuration parameters} of the channel (e.g. receive buffer size),</li>
- * <li>the I/O operations that the channel supports (e.g. read, write, connect, and bind), and</li>
- * <li>the {@link ChannelPipeline} which handles all I/O events and requests
+ * <li>the current state of the channel (e.g. is it open? is it connected?),</li>                                   // 当前连接状态
+ * <li>the {@linkplain ChannelConfig configuration parameters} of the channel (e.g. receive buffer size),</li>      // 连接参数
+ * <li>the I/O operations that the channel supports (e.g. read, write, connect, and bind), and</li>                 // 提供读写等操作
+ * <li>the {@link ChannelPipeline} which handles all I/O events and requests                                        // ChannelPipeline
  *     associated with the channel.</li>
  * </ul>
  *
  * <h3>All I/O operations are asynchronous.</h3>
  * <p>
- * All I/O operations in Netty are asynchronous.  It means any I/O calls will
+ * All I/O operations in Netty are asynchronous.  It means any I/O calls will                 所有的操作都是异步的 ChannelFuture
  * return immediately with no guarantee that the requested I/O operation has
  * been completed at the end of the call.  Instead, you will be returned with
  * a {@link ChannelFuture} instance which will notify you when the requested I/O
@@ -53,7 +53,7 @@ import java.net.SocketAddress;
  *
  * <h3>Channels are hierarchical</h3>
  * <p>
- * A {@link Channel} can have a {@linkplain #parent() parent} depending on
+ * A {@link Channel} can have a {@linkplain #parent() parent} depending on                    层级的
  * how it was created.  For instance, a {@link SocketChannel}, that was accepted
  * by {@link ServerSocketChannel}, will return the {@link ServerSocketChannel}
  * as its parent on {@link #parent()}.
@@ -73,7 +73,7 @@ import java.net.SocketAddress;
  *
  * <h3>Release resources</h3>
  * <p>
- * It is important to call {@link #close()} or {@link #close(ChannelPromise)} to release all
+ * It is important to call {@link #close()} or {@link #close(ChannelPromise)} to release all   close或者close(ChannelPromise) 释放资源
  * resources once you are done with the {@link Channel}. This ensures all resources are
  * released in a proper way, i.e. filehandles.
  */

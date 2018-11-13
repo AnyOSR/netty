@@ -408,6 +408,7 @@ final class PlatformDependent0 {
         return newDirectBuffer(UNSAFE.reallocateMemory(directBufferAddress(buffer), capacity), capacity);
     }
 
+    //UNSAFE.allocateMemory(capacity) 分配capacity的内存空间，并返回虚拟内存地址
     static ByteBuffer allocateDirectNoCleaner(int capacity) {
         return newDirectBuffer(UNSAFE.allocateMemory(capacity), capacity);
     }
@@ -428,6 +429,7 @@ final class PlatformDependent0 {
 
     //创建ByteBuffer
     //address是已经分配好内存的起始地址
+    //将其封装入ByteBuffer
     static ByteBuffer newDirectBuffer(long address, int capacity) {
         ObjectUtil.checkPositiveOrZero(capacity, "capacity");
 

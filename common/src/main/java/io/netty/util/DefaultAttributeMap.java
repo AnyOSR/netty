@@ -26,9 +26,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 public class DefaultAttributeMap implements AttributeMap {
 
     @SuppressWarnings("rawtypes")
-    private static final AtomicReferenceFieldUpdater<DefaultAttributeMap, AtomicReferenceArray> updater =
-            AtomicReferenceFieldUpdater.newUpdater(DefaultAttributeMap.class, AtomicReferenceArray.class, "attributes");
-
+    private static final AtomicReferenceFieldUpdater<DefaultAttributeMap, AtomicReferenceArray> updater = AtomicReferenceFieldUpdater.newUpdater(DefaultAttributeMap.class, AtomicReferenceArray.class, "attributes");
     private static final int BUCKET_SIZE = 4;
     private static final int MASK = BUCKET_SIZE  - 1;
 
@@ -47,21 +45,24 @@ public class DefaultAttributeMap implements AttributeMap {
             // Not using ConcurrentHashMap due to high memory consumption.
             attributes = new AtomicReferenceArray<DefaultAttribute<?>>(BUCKET_SIZE);
 
+            //更新失败后，需要重新获取this.attributes的引用
+            //假如更新成功，不需要再获取this.attributes的引用，之前attributes就已经指向new的那个AtomicReferenceArray了
             if (!updater.compareAndSet(this, null, attributes)) {
                 attributes = this.attributes;
             }
         }
 
+        //每一个AttributeKey都有一个唯一的id
         int i = index(key);
         DefaultAttribute<?> head = attributes.get(i);
         if (head == null) {
             // No head exists yet which means we may be able to add the attribute without synchronization and just
             // use compare and set. At worst we need to fallback to synchronization and waste two allocations.
-            head = new DefaultAttribute();
-            DefaultAttribute<T> attr = new DefaultAttribute<T>(head, key);
+            head = new DefaultAttribute();                                     //头节点
+            DefaultAttribute<T> attr = new DefaultAttribute<T>(head, key);     //具体的数据节点
             head.next = attr;
             attr.prev = head;
-            if (attributes.compareAndSet(i, null, head)) {
+            if (attributes.compareAndSet(i, null, head)) {              //cas更新头节点的值
                 // we were able to add it so return the attr right away
                 return attr;
             } else {
@@ -80,7 +81,7 @@ public class DefaultAttributeMap implements AttributeMap {
                     return attr;
                 }
 
-                if (next.key == key && !next.removed) {
+                if (next.key == key && !next.removed) {  //key相等，且没有被remove
                     return (Attribute<T>) next;
                 }
                 curr = next;
@@ -92,6 +93,7 @@ public class DefaultAttributeMap implements AttributeMap {
         return key.id() & MASK;
     }
 
+    //AtomicReference拥有的那个value就是AtomicReference.get()返回的
     @SuppressWarnings("serial")
     private static final class DefaultAttribute<T> extends AtomicReference<T> implements Attribute<T> {
 
@@ -99,7 +101,6 @@ public class DefaultAttributeMap implements AttributeMap {
 
         // The head of the linked-list this attribute belongs to
         private final DefaultAttribute<?> head;
-        private final AttributeKey<T> key;
 
         // Double-linked list to prev and next node to allow fast removal
         private DefaultAttribute<?> prev;
@@ -107,6 +108,7 @@ public class DefaultAttributeMap implements AttributeMap {
 
         // Will be set to true one the attribute is removed via getAndRemove() or remove()
         private volatile boolean removed;
+        private final AttributeKey<T> key;
 
         DefaultAttribute(DefaultAttribute<?> head, AttributeKey<T> key) {
             this.head = head;
@@ -114,6 +116,7 @@ public class DefaultAttributeMap implements AttributeMap {
         }
 
         // Special constructor for the head of the linked-list.
+        //头节点
         DefaultAttribute() {
             head = this;
             key = null;
@@ -126,13 +129,13 @@ public class DefaultAttributeMap implements AttributeMap {
 
         @Override
         public T setIfAbsent(T value) {
-            while (!compareAndSet(null, value)) {
-                T old = get();
+            while (!compareAndSet(null, value)) {  //更新失败，已经有别的线程更新了
+                T old = get();                            //返回旧值
                 if (old != null) {
                     return old;
                 }
             }
-            return null;
+            return null;                       //更新成功返回null，也是之前的旧值
         }
 
         @Override
@@ -150,6 +153,7 @@ public class DefaultAttributeMap implements AttributeMap {
             remove0();
         }
 
+        //将当前DefaultAttribute从链中断开
         private void remove0() {
             synchronized (head) {
                 if (prev == null) {

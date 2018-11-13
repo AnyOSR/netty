@@ -250,6 +250,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
     // Method must be called inside synchronized(this) { ... } block
     //从前到后分配，分配成功就返回
     // 50 25  000 init q0775
+    //涉及到chunk的add，外层有同步？
     private void allocateNormal(PooledByteBuf<T> buf, int reqCapacity, int normCapacity) {
         if (q050.allocate(buf, reqCapacity, normCapacity) || q025.allocate(buf, reqCapacity, normCapacity) ||
             q000.allocate(buf, reqCapacity, normCapacity) || qInit.allocate(buf, reqCapacity, normCapacity) ||
@@ -258,7 +259,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
         }
 
         // Add a new chunk.
-        PoolChunk<T> c = newChunk(pageSize, maxOrder, pageShifts, chunkSize);       //都分配失败，则新建chunk
+        PoolChunk<T> c = newChunk(pageSize, maxOrder, pageShifts, chunkSize);       //都分配失败，则新建chunk，并实际分配内存
         long handle = c.allocate(normCapacity);
         assert handle > 0;
         c.initBuf(buf, handle, reqCapacity);
@@ -739,14 +740,15 @@ abstract class PoolArena<T> implements PoolArenaMetric {
             return true;
         }
 
-        //0 或者 memory.address - memory.address % directMemoryCacheAlignment
+        //0 或者 memory.address % directMemoryCacheAlignment
+        //相对于address的偏移量
         private int offsetCacheLine(ByteBuffer memory) {
             // We can only calculate the offset if Unsafe is present as otherwise directBufferAddress(...) will
             // throw an NPE.
             return HAS_UNSAFE ? (int) (PlatformDependent.directBufferAddress(memory) & directMemoryCacheAlignmentMask) : 0;
         }
 
-        //新建PoolChunk
+        //新建PoolChunk(实际分配内存)
         @Override
         protected PoolChunk<ByteBuffer> newChunk(int pageSize, int maxOrder, int pageShifts, int chunkSize) {
             if (directMemoryCacheAlignment == 0) {   //不需要对齐
@@ -765,6 +767,7 @@ abstract class PoolArena<T> implements PoolArenaMetric {
             return new PoolChunk<ByteBuffer>(this, memory, capacity, offsetCacheLine(memory));
         }
 
+        //实际分配内存
         private static ByteBuffer allocateDirect(int capacity) {
             return PlatformDependent.useDirectBufferNoCleaner() ? PlatformDependent.allocateDirectNoCleaner(capacity) : ByteBuffer.allocateDirect(capacity);
         }
