@@ -32,9 +32,9 @@ import java.util.concurrent.TimeUnit;
  * a {@link ChannelFuture} instance which gives you the information about the
  * result or status of the I/O operation.
  * <p>
- * A {@link ChannelFuture} is either <em>uncompleted</em> or <em>completed</em>.
- * When an I/O operation begins, a new future object is created.  The new future
- * is uncompleted initially - it is neither succeeded, failed, nor cancelled
+ * A {@link ChannelFuture} is either <em>uncompleted</em> or <em>completed</em>.    ChannelFuture 两种状态 完成或未完成
+ * When an I/O operation begins, a new future object is created.  The new future    完成： 成功 失败 取消
+ * is uncompleted initially - it is neither succeeded, failed, nor cancelled        未完成：IO操作还未完成
  * because the I/O operation is not finished yet.  If the I/O operation is
  * finished either successfully, with failure, or by cancellation, the future is
  * marked as completed with more specific information, such as the cause of the
@@ -59,19 +59,19 @@ import java.util.concurrent.TimeUnit;
  *                                      +---------------------------+
  * </pre>
  *
- * Various methods are provided to let you check if the I/O operation has been
+ * Various methods are provided to let you check if the I/O operation has been          ChannelFutureListener：IO操作完成时得到通知
  * completed, wait for the completion, and retrieve the result of the I/O
  * operation. It also allows you to add {@link ChannelFutureListener}s so you
  * can get notified when the I/O operation is completed.
  *
  * <h3>Prefer {@link #addListener(GenericFutureListener)} to {@link #await()}</h3>
  *
- * It is recommended to prefer {@link #addListener(GenericFutureListener)} to
+ * It is recommended to prefer {@link #addListener(GenericFutureListener)} to           prefer addListener() to await()
  * {@link #await()} wherever possible to get notified when an I/O operation is
  * done and to do any follow-up tasks.
  * <p>
- * {@link #addListener(GenericFutureListener)} is non-blocking.  It simply adds
- * the specified {@link ChannelFutureListener} to the {@link ChannelFuture}, and
+ * {@link #addListener(GenericFutureListener)} is non-blocking.  It simply adds         addListener(GenericFutureListener)：只是简单地插入listener到ChannelFuture，等IO操作后调用listener
+ * the specified {@link ChannelFutureListener} to the {@link ChannelFuture}, and        ChannelFutureListener 实现sequential logic会有一些tricky
  * I/O thread will notify the listeners when the I/O operation associated with
  * the future is done.  {@link ChannelFutureListener} yields the best
  * performance and resource utilization because it does not block at all, but
@@ -82,12 +82,12 @@ import java.util.concurrent.TimeUnit;
  * caller thread blocks until the operation is done.  It is easier to implement
  * a sequential logic with {@link #await()}, but the caller thread blocks
  * unnecessarily until the I/O operation is done and there's relatively
- * expensive cost of inter-thread notification.  Moreover, there's a chance of
+ * expensive cost of inter-thread notification.  Moreover, there's a chance of          死锁概率
  * dead lock in a particular circumstance, which is described below.
  *
- * <h3>Do not call {@link #await()} inside {@link ChannelHandler}</h3>
- * <p>
- * The event handler methods in {@link ChannelHandler} are usually called by
+ * <h3>Do not call {@link #await()} inside {@link ChannelHandler}</h3>                  不要在ChannelHandler里面调用await()
+ * <p>                                                                                  事件处理方法通常是由IO线程去调用的，如果一个在IO线程上执行的事件处理方法调用了await(),
+ * The event handler methods in {@link ChannelHandler} are usually called by            它所等待的IO操作可能会永远不会完成，因为await()阻塞了IO线程
  * an I/O thread.  If {@link #await()} is called by an event handler
  * method, which is called by the I/O thread, the I/O operation it is waiting
  * for might never complete because {@link #await()} can block the I/O
@@ -120,8 +120,8 @@ import java.util.concurrent.TimeUnit;
  * make sure you do not call {@link #await()} in an I/O thread.  Otherwise,
  * {@link BlockingOperationException} will be raised to prevent a dead lock.
  *
- * <h3>Do not confuse I/O timeout and await timeout</h3>
- *
+ * <h3>Do not confuse I/O timeout and await timeout</h3>                                          //IO超时  await超时
+ *                                                                                                //IO超时后，future被设置为失败，状态为 完成
  * The timeout value you specify with {@link #await(long)},
  * {@link #await(long, TimeUnit)}, {@link #awaitUninterruptibly(long)}, or
  * {@link #awaitUninterruptibly(long, TimeUnit)} are not related with I/O

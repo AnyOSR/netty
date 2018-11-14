@@ -60,13 +60,11 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
      * Create a new instance using the specified number of threads, the given {@link ThreadFactory} and the given
      * {@link SelectorProvider}.
      */
-    public NioEventLoopGroup(
-            int nThreads, ThreadFactory threadFactory, final SelectorProvider selectorProvider) {
+    public NioEventLoopGroup(int nThreads, ThreadFactory threadFactory, final SelectorProvider selectorProvider) {
         this(nThreads, threadFactory, selectorProvider, DefaultSelectStrategyFactory.INSTANCE);
     }
 
-    public NioEventLoopGroup(int nThreads, ThreadFactory threadFactory,
-        final SelectorProvider selectorProvider, final SelectStrategyFactory selectStrategyFactory) {
+    public NioEventLoopGroup(int nThreads, ThreadFactory threadFactory, final SelectorProvider selectorProvider, final SelectStrategyFactory selectStrategyFactory) {
         super(nThreads, threadFactory, selectorProvider, selectStrategyFactory, RejectedExecutionHandlers.reject());
     }
 

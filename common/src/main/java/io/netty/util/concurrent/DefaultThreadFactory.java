@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A {@link ThreadFactory} implementation with a simple naming rule.
+ * A {@link ThreadFactory} implementation with a simple naming rule.  FastThreadLocalThread 工厂类
  */
 public class DefaultThreadFactory implements ThreadFactory {
 
@@ -88,8 +88,7 @@ public class DefaultThreadFactory implements ThreadFactory {
             throw new NullPointerException("poolName");
         }
         if (priority < Thread.MIN_PRIORITY || priority > Thread.MAX_PRIORITY) {
-            throw new IllegalArgumentException(
-                    "priority: " + priority + " (expected: Thread.MIN_PRIORITY <= priority <= Thread.MAX_PRIORITY)");
+            throw new IllegalArgumentException("priority: " + priority + " (expected: Thread.MIN_PRIORITY <= priority <= Thread.MAX_PRIORITY)");
         }
 
         prefix = poolName + '-' + poolId.incrementAndGet() + '-';
@@ -99,8 +98,7 @@ public class DefaultThreadFactory implements ThreadFactory {
     }
 
     public DefaultThreadFactory(String poolName, boolean daemon, int priority) {
-        this(poolName, daemon, priority, System.getSecurityManager() == null ?
-                Thread.currentThread().getThreadGroup() : System.getSecurityManager().getThreadGroup());
+        this(poolName, daemon, priority, System.getSecurityManager() == null ? Thread.currentThread().getThreadGroup() : System.getSecurityManager().getThreadGroup());
     }
 
     @Override

@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 
 /**
- * The result of an asynchronous operation.
+ * The result of an asynchronous operation.   V是result类型？
  */
 @SuppressWarnings("ClassNameSameAsAncestorName")
 public interface Future<V> extends java.util.concurrent.Future<V> {

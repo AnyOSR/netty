@@ -44,27 +44,20 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  */
 public abstract class SingleThreadEventExecutor extends AbstractScheduledEventExecutor implements OrderedEventExecutor {
 
-    static final int DEFAULT_MAX_PENDING_EXECUTOR_TASKS = Math.max(16,
-            SystemPropertyUtil.getInt("io.netty.eventexecutor.maxPendingTasks", Integer.MAX_VALUE));
-
-    private static final InternalLogger logger =
-            InternalLoggerFactory.getInstance(SingleThreadEventExecutor.class);
-
+    static final int DEFAULT_MAX_PENDING_EXECUTOR_TASKS = Math.max(16, SystemPropertyUtil.getInt("io.netty.eventexecutor.maxPendingTasks", Integer.MAX_VALUE));
+    private static final InternalLogger logger = InternalLoggerFactory.getInstance(SingleThreadEventExecutor.class);
     private static final int ST_NOT_STARTED = 1;
     private static final int ST_STARTED = 2;
     private static final int ST_SHUTTING_DOWN = 3;
     private static final int ST_SHUTDOWN = 4;
     private static final int ST_TERMINATED = 5;
-
     private static final Runnable WAKEUP_TASK = new Runnable() {
         @Override
         public void run() {
             // Do nothing.
         }
     };
-
-    private static final AtomicIntegerFieldUpdater<SingleThreadEventExecutor> STATE_UPDATER =
-            AtomicIntegerFieldUpdater.newUpdater(SingleThreadEventExecutor.class, "state");
+    private static final AtomicIntegerFieldUpdater<SingleThreadEventExecutor> STATE_UPDATER = AtomicIntegerFieldUpdater.newUpdater(SingleThreadEventExecutor.class, "state");
 
     private final EventExecutorGroup parent;
     private final Queue<Runnable> taskQueue;

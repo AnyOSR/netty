@@ -87,14 +87,12 @@ public abstract class AbstractEventExecutorGroup implements EventExecutorGroup {
     }
 
     @Override
-    public <T> List<java.util.concurrent.Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
-            throws InterruptedException {
+    public <T> List<java.util.concurrent.Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
         return next().invokeAll(tasks);
     }
 
     @Override
-    public <T> List<java.util.concurrent.Future<T>> invokeAll(
-            Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException {
+    public <T> List<java.util.concurrent.Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException {
         return next().invokeAll(tasks, timeout, unit);
     }
 
@@ -104,8 +102,7 @@ public abstract class AbstractEventExecutorGroup implements EventExecutorGroup {
     }
 
     @Override
-    public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
-            throws InterruptedException, ExecutionException, TimeoutException {
+    public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
         return next().invokeAny(tasks, timeout, unit);
     }
 

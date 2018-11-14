@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
- * (Transport implementors only) an internal data structure used by {@link AbstractChannel} to store its pending
+ * (Transport implementors only) an internal data structure used by {@link AbstractChannel} to store its pending     存储待处理的写请求
  * outbound write requests.
  * <p>
  * All methods must be called by a transport implementation from an I/O thread, except the following ones:
@@ -83,17 +83,13 @@ public final class ChannelOutboundBuffer {
 
     private boolean inFail;
 
-    private static final AtomicLongFieldUpdater<ChannelOutboundBuffer> TOTAL_PENDING_SIZE_UPDATER =
-            AtomicLongFieldUpdater.newUpdater(ChannelOutboundBuffer.class, "totalPendingSize");
-
     @SuppressWarnings("UnusedDeclaration")
     private volatile long totalPendingSize;
-
-    private static final AtomicIntegerFieldUpdater<ChannelOutboundBuffer> UNWRITABLE_UPDATER =
-            AtomicIntegerFieldUpdater.newUpdater(ChannelOutboundBuffer.class, "unwritable");
+    private static final AtomicLongFieldUpdater<ChannelOutboundBuffer> TOTAL_PENDING_SIZE_UPDATER = AtomicLongFieldUpdater.newUpdater(ChannelOutboundBuffer.class, "totalPendingSize");
 
     @SuppressWarnings("UnusedDeclaration")
     private volatile int unwritable;
+    private static final AtomicIntegerFieldUpdater<ChannelOutboundBuffer> UNWRITABLE_UPDATER = AtomicIntegerFieldUpdater.newUpdater(ChannelOutboundBuffer.class, "unwritable");
 
     private volatile Runnable fireChannelWritabilityChangedTask;
 
@@ -105,17 +101,18 @@ public final class ChannelOutboundBuffer {
      * Add given message to this {@link ChannelOutboundBuffer}. The given {@link ChannelPromise} will be notified once
      * the message was written.
      */
+    //将entry添加至链尾
     public void addMessage(Object msg, int size, ChannelPromise promise) {
         Entry entry = Entry.newInstance(msg, size, total(msg), promise);
-        if (tailEntry == null) {
+        if (tailEntry == null) {    //如果链表为空,将当前entry作为tail，并置flush为null
             flushedEntry = null;
             tailEntry = entry;
-        } else {
+        } else {                   //否则，将当前entry添加到链尾
             Entry tail = tailEntry;
             tail.next = entry;
             tailEntry = entry;
         }
-        if (unflushedEntry == null) {
+        if (unflushedEntry == null) {  //如果unflush为null，将当前entry置为unflush，表示需要flush到socket缓冲区的第一个entry
             unflushedEntry = entry;
         }
 
@@ -141,7 +138,7 @@ public final class ChannelOutboundBuffer {
             }
             do {
                 flushed ++;
-                if (!entry.promise.setUncancellable()) {
+                if (!entry.promise.setUncancellable()) {  //如果已经被取消了
                     // Was cancelled so make sure we free up memory and notify about the freed bytes
                     int pending = entry.cancel();
                     decrementPendingOutboundBytes(pending, false, true);
@@ -162,6 +159,7 @@ public final class ChannelOutboundBuffer {
         incrementPendingOutboundBytes(size, true);
     }
 
+    //高于高水位线，不可写
     private void incrementPendingOutboundBytes(long size, boolean invokeLater) {
         if (size == 0) {
             return;
@@ -181,6 +179,7 @@ public final class ChannelOutboundBuffer {
         decrementPendingOutboundBytes(size, true, true);
     }
 
+    //低于低水位线，可写
     private void decrementPendingOutboundBytes(long size, boolean invokeLater, boolean notifyWritability) {
         if (size == 0) {
             return;
@@ -238,7 +237,7 @@ public final class ChannelOutboundBuffer {
      */
     public boolean remove() {
         Entry e = flushedEntry;
-        if (e == null) {
+        if (e == null) {            //如果flushedEntry为null，则清除掉NIO_BUFFERS
             clearNioBuffers();
             return false;
         }
@@ -753,6 +752,7 @@ public final class ChannelOutboundBuffer {
         boolean processMessage(Object msg) throws Exception;
     }
 
+    //单向链表
     static final class Entry {
         private static final Recycler<Entry> RECYCLER = new Recycler<Entry>() {
             @Override
@@ -786,6 +786,7 @@ public final class ChannelOutboundBuffer {
             return entry;
         }
 
+        //取消当前entry并释放msg
         int cancel() {
             if (!cancelled) {
                 cancelled = true;
@@ -805,6 +806,7 @@ public final class ChannelOutboundBuffer {
             return 0;
         }
 
+        //回收当前entry
         void recycle() {
             next = null;
             bufs = null;
@@ -819,6 +821,7 @@ public final class ChannelOutboundBuffer {
             RECYCLER.recycle(this, handle);
         }
 
+        //回收this返回this.next
         Entry recycleAndGetNext() {
             Entry next = this.next;
             recycle();

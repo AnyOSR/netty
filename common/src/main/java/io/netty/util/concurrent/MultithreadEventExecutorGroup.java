@@ -29,10 +29,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class MultithreadEventExecutorGroup extends AbstractEventExecutorGroup {
 
-    private final EventExecutor[] children;
-    private final AtomicInteger childIndex = new AtomicInteger();
     private final AtomicInteger terminatedChildren = new AtomicInteger();
     private final Promise<?> terminationFuture = new DefaultPromise(GlobalEventExecutor.INSTANCE);
+
+    private final EventExecutor[] children;
+    private final AtomicInteger childIndex = new AtomicInteger();
     private final EventExecutorChooser chooser;
 
     /**
@@ -137,8 +138,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
      * called for each thread that will serve this {@link MultithreadEventExecutorGroup}.
      *
      */
-    protected abstract EventExecutor newChild(
-            ThreadFactory threadFactory, Object... args) throws Exception;
+    protected abstract EventExecutor newChild(ThreadFactory threadFactory, Object... args) throws Exception;
 
     @Override
     public Future<?> shutdownGracefully(long quietPeriod, long timeout, TimeUnit unit) {
@@ -192,8 +192,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
     }
 
     @Override
-    public boolean awaitTermination(long timeout, TimeUnit unit)
-            throws InterruptedException {
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
         long deadline = System.nanoTime() + unit.toNanos(timeout);
         loop: for (EventExecutor l: children) {
             for (;;) {
@@ -209,6 +208,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
         return isTerminated();
     }
 
+    //检查val是不是2的n次方
     private static boolean isPowerOfTwo(int val) {
         return (val & -val) == val;
     }
@@ -220,14 +220,14 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
     private final class PowerOfTwoEventExecutorChooser implements EventExecutorChooser {
         @Override
         public EventExecutor next() {
-            return children[childIndex.getAndIncrement() & children.length - 1];
+            return children[childIndex.getAndIncrement() & children.length - 1];      //假如length是2的n次方，直接& 更快
         }
     }
 
     private final class GenericEventExecutorChooser implements EventExecutorChooser {
         @Override
         public EventExecutor next() {
-            return children[Math.abs(childIndex.getAndIncrement() % children.length)];
+            return children[Math.abs(childIndex.getAndIncrement() % children.length)];  //否则，只能求余
         }
     }
 }

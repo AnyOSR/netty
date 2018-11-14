@@ -113,8 +113,7 @@ public abstract class AbstractEventExecutor extends AbstractExecutorService impl
     }
 
     @Override
-    public ScheduledFuture<?> schedule(Runnable command, long delay,
-                                       TimeUnit unit) {
+    public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
         throw new UnsupportedOperationException();
     }
 

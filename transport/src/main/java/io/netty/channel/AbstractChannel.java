@@ -405,8 +405,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
             if (!isCompatible(eventLoop)) {
-                promise.setFailure(
-                        new IllegalStateException("incompatible event loop type: " + eventLoop.getClass().getName()));
+                promise.setFailure(new IllegalStateException("incompatible event loop type: " + eventLoop.getClass().getName()));
                 return;
             }
 
@@ -423,9 +422,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                         }
                     });
                 } catch (Throwable t) {
-                    logger.warn(
-                            "Force-closing a channel whose registration task was not accepted by an event loop: {}",
-                            AbstractChannel.this, t);
+                    logger.warn("Force-closing a channel whose registration task was not accepted by an event loop: {}", AbstractChannel.this, t);
                     closeForcibly();
                     closeFuture.setClosed();
                     safeSetFailure(promise, t);
@@ -616,8 +613,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
         }
 
-        private void closeOutboundBufferForShutdown(
-                ChannelPipeline pipeline, ChannelOutboundBuffer buffer, Throwable cause) {
+        private void closeOutboundBufferForShutdown(ChannelPipeline pipeline, ChannelOutboundBuffer buffer, Throwable cause) {
             buffer.failFlushed(cause, false);
             buffer.close(cause, true);
             pipeline.fireUserEventTriggered(ChannelOutputShutdownEvent.INSTANCE);
