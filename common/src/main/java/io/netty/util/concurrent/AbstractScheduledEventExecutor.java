@@ -69,6 +69,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
     /**
      * @see #pollScheduledTask(long)
      */
+    //找出当前已经到了deadline的任务
     protected final Runnable pollScheduledTask() {
         return pollScheduledTask(nanoTime());
     }
@@ -96,6 +97,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
     /**
      * Return the nanoseconds when the next scheduled task is ready to be run or {@code -1} if no task is scheduled.
      */
+    //返回下一个待执行任务距离deadline的时长
     protected final long nextScheduledTaskNano() {
         Queue<ScheduledFutureTask<?>> scheduledTaskQueue = this.scheduledTaskQueue;
         ScheduledFutureTask<?> scheduledTask = scheduledTaskQueue == null ? null : scheduledTaskQueue.peek();
@@ -105,6 +107,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
         return Math.max(0, scheduledTask.deadlineNanos() - nanoTime());
     }
 
+    //取出下一个任务
     final ScheduledFutureTask<?> peekScheduledTask() {
         Queue<ScheduledFutureTask<?>> scheduledTaskQueue = this.scheduledTaskQueue;
         if (scheduledTaskQueue == null) {
@@ -116,12 +119,14 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
     /**
      * Returns {@code true} if a scheduled task is ready for processing.
      */
+    //是否有任务准备好执行
     protected final boolean hasScheduledTasks() {
         Queue<ScheduledFutureTask<?>> scheduledTaskQueue = this.scheduledTaskQueue;
         ScheduledFutureTask<?> scheduledTask = scheduledTaskQueue == null ? null : scheduledTaskQueue.peek();
         return scheduledTask != null && scheduledTask.deadlineNanos() <= nanoTime();
     }
 
+    //只执行一次
     @Override
     public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
         ObjectUtil.checkNotNull(command, "command");
@@ -129,8 +134,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
         if (delay < 0) {
             delay = 0;
         }
-        return schedule(new ScheduledFutureTask<Void>(
-                this, command, null, ScheduledFutureTask.deadlineNanos(unit.toNanos(delay))));
+        return schedule(new ScheduledFutureTask<Void>(this, command, null, ScheduledFutureTask.deadlineNanos(unit.toNanos(delay))));
     }
 
     @Override
@@ -140,26 +144,22 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
         if (delay < 0) {
             delay = 0;
         }
-        return schedule(new ScheduledFutureTask<V>(
-                this, callable, ScheduledFutureTask.deadlineNanos(unit.toNanos(delay))));
+        return schedule(new ScheduledFutureTask<V>(this, callable, ScheduledFutureTask.deadlineNanos(unit.toNanos(delay))));
     }
 
     @Override
     public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit) {
         ObjectUtil.checkNotNull(command, "command");
         ObjectUtil.checkNotNull(unit, "unit");
+
         if (initialDelay < 0) {
-            throw new IllegalArgumentException(
-                    String.format("initialDelay: %d (expected: >= 0)", initialDelay));
+            throw new IllegalArgumentException(String.format("initialDelay: %d (expected: >= 0)", initialDelay));
         }
         if (period <= 0) {
-            throw new IllegalArgumentException(
-                    String.format("period: %d (expected: > 0)", period));
+            throw new IllegalArgumentException(String.format("period: %d (expected: > 0)", period));
         }
 
-        return schedule(new ScheduledFutureTask<Void>(
-                this, Executors.<Void>callable(command, null),
-                ScheduledFutureTask.deadlineNanos(unit.toNanos(initialDelay)), unit.toNanos(period)));
+        return schedule(new ScheduledFutureTask<Void>(this, Executors.<Void>callable(command, null), ScheduledFutureTask.deadlineNanos(unit.toNanos(initialDelay)), unit.toNanos(period)));
     }
 
     @Override
@@ -167,17 +167,13 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
         ObjectUtil.checkNotNull(command, "command");
         ObjectUtil.checkNotNull(unit, "unit");
         if (initialDelay < 0) {
-            throw new IllegalArgumentException(
-                    String.format("initialDelay: %d (expected: >= 0)", initialDelay));
+            throw new IllegalArgumentException(String.format("initialDelay: %d (expected: >= 0)", initialDelay));
         }
         if (delay <= 0) {
-            throw new IllegalArgumentException(
-                    String.format("delay: %d (expected: > 0)", delay));
+            throw new IllegalArgumentException(String.format("delay: %d (expected: > 0)", delay));
         }
 
-        return schedule(new ScheduledFutureTask<Void>(
-                this, Executors.<Void>callable(command, null),
-                ScheduledFutureTask.deadlineNanos(unit.toNanos(initialDelay)), -unit.toNanos(delay)));
+        return schedule(new ScheduledFutureTask<Void>(this, Executors.<Void>callable(command, null), ScheduledFutureTask.deadlineNanos(unit.toNanos(initialDelay)), -unit.toNanos(delay)));
     }
 
     <V> ScheduledFuture<V> schedule(final ScheduledFutureTask<V> task) {

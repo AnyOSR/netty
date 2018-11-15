@@ -88,10 +88,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      * @param addTaskWakesUp    {@code true} if and only if invocation of {@link #addTask(Runnable)} will wake up the
      *                          executor thread
      */
-    protected SingleThreadEventExecutor(
-            EventExecutorGroup parent, ThreadFactory threadFactory, boolean addTaskWakesUp) {
-        this(parent, threadFactory, addTaskWakesUp, DEFAULT_MAX_PENDING_EXECUTOR_TASKS,
-                RejectedExecutionHandlers.reject());
+    protected SingleThreadEventExecutor(EventExecutorGroup parent, ThreadFactory threadFactory, boolean addTaskWakesUp) {
+        this(parent, threadFactory, addTaskWakesUp, DEFAULT_MAX_PENDING_EXECUTOR_TASKS, RejectedExecutionHandlers.reject());
     }
 
     /**
@@ -105,9 +103,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      * @param rejectedHandler   the {@link RejectedExecutionHandler} to use.
      */
     @SuppressWarnings("deprecation")
-    protected SingleThreadEventExecutor(
-            EventExecutorGroup parent, ThreadFactory threadFactory, boolean addTaskWakesUp, int maxPendingTasks,
-            RejectedExecutionHandler rejectedHandler) {
+    protected SingleThreadEventExecutor(EventExecutorGroup parent, ThreadFactory threadFactory, boolean addTaskWakesUp, int maxPendingTasks, RejectedExecutionHandler rejectedHandler) {
         if (threadFactory == null) {
             throw new NullPointerException("threadFactory");
         }
@@ -115,6 +111,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         this.parent = parent;
         this.addTaskWakesUp = addTaskWakesUp;
 
+        //这个thread干嘛的？善后？
         thread = threadFactory.newThread(new Runnable() {
             @Override
             public void run() {
@@ -127,24 +124,22 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                     logger.warn("Unexpected exception from an event executor: ", t);
                 } finally {
                     for (;;) {
+                        //状态大于等于ST_SHUTTING_DOWN之后才能从这个循环中跳出
                         int oldState = STATE_UPDATER.get(SingleThreadEventExecutor.this);
-                        if (oldState >= ST_SHUTTING_DOWN || STATE_UPDATER.compareAndSet(
-                                SingleThreadEventExecutor.this, oldState, ST_SHUTTING_DOWN)) {
+                        if (oldState >= ST_SHUTTING_DOWN || STATE_UPDATER.compareAndSet(SingleThreadEventExecutor.this, oldState, ST_SHUTTING_DOWN)) {
                             break;
                         }
                     }
-                    // Check if confirmShutdown() was called at the end of the loop.
+                    // confirmShutdown方法里面会给gracefulShutdownStartTime赋值，如果为0，说明confirmShutdown没有被调用过
                     if (success && gracefulShutdownStartTime == 0) {
-                        logger.error(
-                                "Buggy " + EventExecutor.class.getSimpleName() + " implementation; " +
-                                SingleThreadEventExecutor.class.getSimpleName() + ".confirmShutdown() must be called " +
-                                "before run() implementation terminates.");
+                        logger.error("Buggy " + EventExecutor.class.getSimpleName() + " implementation; " +
+                                SingleThreadEventExecutor.class.getSimpleName() + ".confirmShutdown() must be called " + "before run() implementation terminates.");
                     }
 
                     try {
                         // Run all remaining tasks and shutdown hooks.
                         for (;;) {
-                            if (confirmShutdown()) {
+                            if (confirmShutdown()) {  //直到返回true才break
                                 break;
                             }
                         }
@@ -155,9 +150,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                             STATE_UPDATER.set(SingleThreadEventExecutor.this, ST_TERMINATED);
                             threadLock.release();
                             if (!taskQueue.isEmpty()) {
-                                logger.warn(
-                                        "An event executor terminated with " +
-                                        "non-empty task queue (" + taskQueue.size() + ')');
+                                logger.warn("An event executor terminated with " + "non-empty task queue (" + taskQueue.size() + ')');
                             }
 
                             terminationFuture.setSuccess(null);
@@ -225,6 +218,9 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      *
      * @return {@code null} if the executor thread has been interrupted or waken up.
      */
+    //调用takeTask的线程必须是EventLoop
+    //然而有可能会阻塞
+    //所以外部线程execute任务时，可能会添加一个WAKEUP_TASK，唤醒阻塞在EventLoop上的线程
     protected Runnable takeTask() {
         assert inEventLoop();
         if (!(taskQueue instanceof BlockingQueue)) {
@@ -234,7 +230,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         BlockingQueue<Runnable> taskQueue = (BlockingQueue<Runnable>) this.taskQueue;
         for (;;) {
             ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
-            if (scheduledTask == null) {
+            if (scheduledTask == null) {      //如果没有取到ScheduledTask
                 Runnable task = null;
                 try {
                     task = taskQueue.take();
@@ -245,23 +241,23 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                     // Ignore
                 }
                 return task;
-            } else {
-                long delayNanos = scheduledTask.delayNanos();
+            } else {         //取到ScheduledTask
+                long delayNanos = scheduledTask.delayNanos();    //scheduledTask的剩余超时时间
                 Runnable task = null;
-                if (delayNanos > 0) {
+                if (delayNanos > 0) {          //还未超时，则从taskQueue取任务
                     try {
                         task = taskQueue.poll(delayNanos, TimeUnit.NANOSECONDS);
                     } catch (InterruptedException e) {
                         return null;
                     }
                 }
-                if (task == null) {
+                if (task == null) {              //没有取到任务，时间已经到了ScheduledTask的deadline
                     // We need to fetch the scheduled tasks now as otherwise there may be a chance that
                     // scheduled tasks are never executed if there is always one task in the taskQueue.
                     // This is for example true for the read task of OIO Transport
                     // See https://github.com/netty/netty/issues/1614
-                    fetchFromScheduledTaskQueue();
-                    task = taskQueue.poll();
+                    fetchFromScheduledTaskQueue();        //将任务从scheduletask转移到taskQueue中
+                    task = taskQueue.poll();              //然后从taskQueue中取出任务
                 }
 
                 if (task != null) {
@@ -271,9 +267,12 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
     }
 
+    //将ScheduledTask转移到taskQueue中
+    //返回false，表示由任务转移失败
+    //返回true，任务全部转移成功
     private boolean fetchFromScheduledTaskQueue() {
         long nanoTime = AbstractScheduledEventExecutor.nanoTime();
-        Runnable scheduledTask  = pollScheduledTask(nanoTime);
+        Runnable scheduledTask  = pollScheduledTask(nanoTime);   //取出ScheduledTask
         while (scheduledTask != null) {
             if (!taskQueue.offer(scheduledTask)) {
                 // No space left in the task queue add it back to the scheduledTaskQueue so we pick it up again.
@@ -319,11 +318,13 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         if (task == null) {
             throw new NullPointerException("task");
         }
-        if (!offerTask(task)) {
+        if (!offerTask(task)) {    //插入任务失败，调用reject
             rejectedExecutionHandler.rejected(task, this);
         }
     }
 
+    //插入任务，如果状态 >= ST_SHUTDOWN ，则抛异常
+    //返回插入是否成功
     final boolean offerTask(Runnable task) {
         if (isShutdown()) {
             reject();
@@ -346,6 +347,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      *
      * @return {@code true} if and only if at least one task was run
      */
+    //取出ScheduledTask，转移到taskQueue中，直到所有的ScheduledTask都转移完，并处理
+    //转移任务后，没有取到任务，则返回false
     protected boolean runAllTasks() {
         boolean fetchedAll;
         do {
@@ -377,6 +380,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      * Poll all tasks from the task queue and run them via {@link Runnable#run()} method.  This method stops running
      * the tasks in the task queue and returns if it ran longer than {@code timeoutNanos}.
      */
+    //执行所有的任务，超时则退出
+    //一次任务都没执行过，返回false
     protected boolean runAllTasks(long timeoutNanos) {
         fetchFromScheduledTaskQueue();
         Runnable task = pollTask();
@@ -451,6 +456,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         // NOOP
     }
 
+    //不是inEventLoop(调用wakeup的方法是外部线程) 或者 ST_SHUTTING_DOWN
+    //则插入WAKEUP_TASK，类似毒丸？为了让阻塞在takeTask()的线程弄醒？
     protected void wakeup(boolean inEventLoop) {
         if (!inEventLoop || state == ST_SHUTTING_DOWN) {
             // Use offer as we actually only need this to unblock the thread and if offer fails we do not care as there
@@ -496,6 +503,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
     }
 
+    //执行关闭钩子
+    //返回是否有钩子执行过
     private boolean runShutdownHooks() {
         boolean ran = false;
         // Note shutdown hooks can add / remove shutdown hooks.
@@ -526,13 +535,13 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             throw new IllegalArgumentException("quietPeriod: " + quietPeriod + " (expected >= 0)");
         }
         if (timeout < quietPeriod) {
-            throw new IllegalArgumentException(
-                    "timeout: " + timeout + " (expected >= quietPeriod (" + quietPeriod + "))");
+            throw new IllegalArgumentException("timeout: " + timeout + " (expected >= quietPeriod (" + quietPeriod + "))");
         }
         if (unit == null) {
             throw new NullPointerException("unit");
         }
 
+        //正在关闭
         if (isShuttingDown()) {
             return terminationFuture();
         }
@@ -540,14 +549,14 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         boolean inEventLoop = inEventLoop();
         boolean wakeup;
         int oldState;
-        for (;;) {
+        for (;;) {      //直到状态变为ST_SHUTTING_DOWN以上
             if (isShuttingDown()) {
                 return terminationFuture();
             }
             int newState;
             wakeup = true;
             oldState = state;
-            if (inEventLoop) {
+            if (inEventLoop) {      //如果是inEventLoop
                 newState = ST_SHUTTING_DOWN;
             } else {
                 switch (oldState) {
@@ -556,7 +565,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                         newState = ST_SHUTTING_DOWN;
                         break;
                     default:
-                        newState = oldState;
+                        newState = oldState;      //oldState >= ST_SHUTTING_DOWN
                         wakeup = false;
                 }
             }
@@ -571,6 +580,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             thread.start();
         }
 
+        //如果是inEventLoop，或者
+        // 不是inEventLoop，且oldState <= ST_STARTED
         if (wakeup) {
             wakeup(inEventLoop);
         }
@@ -646,8 +657,9 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     /**
      * Confirm that the shutdown if the instance should be done now!
      */
+    //确认关闭
     protected boolean confirmShutdown() {
-        if (!isShuttingDown()) {
+        if (!isShuttingDown()) {  // 状态 < ST_SHUTTING_DOWN
             return false;
         }
 
@@ -718,6 +730,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         return isTerminated();
     }
 
+    //添加任务
     @Override
     public void execute(Runnable task) {
         if (task == null) {
@@ -725,44 +738,41 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
 
         boolean inEventLoop = inEventLoop();
-        if (inEventLoop) {
+        if (inEventLoop) {   //如果是 inEventLoop
             addTask(task);
-        } else {
+        } else {             //否则假如是外部线程调用
             startThread();
             addTask(task);
-            if (isShutdown() && removeTask(task)) {
+            if (isShutdown() && removeTask(task)) {  //如果ST_SHUTDOWN 且 将当前task从taskQueue移出了(因为之前add了)
                 reject();
             }
         }
 
+        //如果addTaskWakesUp为false 且(外部线程调用或者shutdown)
         if (!addTaskWakesUp && wakesUpForTask(task)) {
             wakeup(inEventLoop);
         }
     }
 
     @Override
-    public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
-        throwIfInEventLoop("invokeAny");
+    public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException { throwIfInEventLoop("invokeAny");
         return super.invokeAny(tasks);
     }
 
     @Override
-    public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
-            throws InterruptedException, ExecutionException, TimeoutException {
+    public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
         throwIfInEventLoop("invokeAny");
         return super.invokeAny(tasks, timeout, unit);
     }
 
     @Override
-    public <T> List<java.util.concurrent.Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
-            throws InterruptedException {
+    public <T> List<java.util.concurrent.Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) throws InterruptedException {
         throwIfInEventLoop("invokeAll");
         return super.invokeAll(tasks);
     }
 
     @Override
-    public <T> List<java.util.concurrent.Future<T>> invokeAll(
-            Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException {
+    public <T> List<java.util.concurrent.Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException {
         throwIfInEventLoop("invokeAll");
         return super.invokeAll(tasks, timeout, unit);
     }

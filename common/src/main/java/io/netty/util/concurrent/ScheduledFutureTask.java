@@ -25,32 +25,28 @@ import java.util.concurrent.atomic.AtomicLong;
 @SuppressWarnings("ComparableImplementedButEqualsNotOverridden")
 final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFuture<V> {
     private static final AtomicLong nextTaskId = new AtomicLong();
-    private static final long START_TIME = System.nanoTime();
+    private static final long START_TIME = System.nanoTime();  //基准时刻 所有ScheduledFutureTask任务的时间基准
 
+    //返回以START_TIME为时间基准的当前“时刻”
     static long nanoTime() {
         return System.nanoTime() - START_TIME;
     }
 
+    //返回 延迟时间为delay的 deadline时刻
     static long deadlineNanos(long delay) {
         return nanoTime() + delay;
     }
 
     private final long id = nextTaskId.getAndIncrement();
-    private long deadlineNanos;
-    /* 0 - no repeat, >0 - repeat at fixed rate, <0 - repeat with fixed delay */
+    private long deadlineNanos;          // deadline时刻 以START_TIME为基准
     private final long periodNanos;
 
-    ScheduledFutureTask(
-            AbstractScheduledEventExecutor executor,
-            Runnable runnable, V result, long nanoTime) {
-
+    ScheduledFutureTask(AbstractScheduledEventExecutor executor, Runnable runnable, V result, long nanoTime) {
         this(executor, toCallable(runnable, result), nanoTime);
     }
 
-    ScheduledFutureTask(
-            AbstractScheduledEventExecutor executor,
-            Callable<V> callable, long nanoTime, long period) {
-
+    //生成ScheduledFutureTask的时候应该会调用deadlineNanos来计算deadlineNanos？
+    ScheduledFutureTask(AbstractScheduledEventExecutor executor, Callable<V> callable, long nanoTime, long period) {
         super(executor, callable);
         if (period == 0) {
             throw new IllegalArgumentException("period: 0 (expected: != 0)");
@@ -59,10 +55,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
         periodNanos = period;
     }
 
-    ScheduledFutureTask(
-            AbstractScheduledEventExecutor executor,
-            Callable<V> callable, long nanoTime) {
-
+    ScheduledFutureTask(AbstractScheduledEventExecutor executor, Callable<V> callable, long nanoTime) {
         super(executor, callable);
         deadlineNanos = nanoTime;
         periodNanos = 0;
@@ -77,6 +70,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
         return deadlineNanos;
     }
 
+    //还有多长时间到deadline
     public long delayNanos() {
         return Math.max(0, deadlineNanos() - nanoTime());
     }
@@ -111,6 +105,9 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
         }
     }
 
+    // executor： notify listeners when this promise is complete
+    //periodNanos == 0 当前任务只执行一次
+    //否则，执行后，更改当前任务的deadlineNanos，并加入到executor()的scheduledTaskQueue，准备再次执行
     @Override
     public void run() {
         assert executor().inEventLoop();
@@ -127,14 +124,13 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
                     if (!executor().isShutdown()) {
                         long p = periodNanos;
                         if (p > 0) {
-                            deadlineNanos += p;
+                            deadlineNanos += p;                //更新当前task的deadlineNanos，在当前deadlineNanos的基础上，p之后再被调度
                         } else {
-                            deadlineNanos = nanoTime() - p;
+                            deadlineNanos = nanoTime() - p;    //不应该是加吗？
                         }
                         if (!isCancelled()) {
                             // scheduledTaskQueue can never be null as we lazy init it before submit the task!
-                            Queue<ScheduledFutureTask<?>> scheduledTaskQueue =
-                                    ((AbstractScheduledEventExecutor) executor()).scheduledTaskQueue;
+                            Queue<ScheduledFutureTask<?>> scheduledTaskQueue = ((AbstractScheduledEventExecutor) executor()).scheduledTaskQueue;
                             assert scheduledTaskQueue != null;
                             scheduledTaskQueue.add(this);
                         }
