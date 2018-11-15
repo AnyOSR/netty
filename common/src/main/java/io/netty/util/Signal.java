@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentMap;
 public final class Signal extends Error {
 
     private static final long serialVersionUID = -221145131122459977L;
-
     private static final ConcurrentMap<String, Boolean> map = PlatformDependent.newConcurrentHashMap();
 
     @SuppressWarnings("deprecation")

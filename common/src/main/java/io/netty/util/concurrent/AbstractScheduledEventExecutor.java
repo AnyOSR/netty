@@ -57,8 +57,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
             return;
         }
 
-        final ScheduledFutureTask<?>[] scheduledTasks =
-                scheduledTaskQueue.toArray(new ScheduledFutureTask<?>[scheduledTaskQueue.size()]);
+        final ScheduledFutureTask<?>[] scheduledTasks = scheduledTaskQueue.toArray(new ScheduledFutureTask<?>[scheduledTaskQueue.size()]);
 
         for (ScheduledFutureTask<?> task: scheduledTasks) {
             task.cancelWithoutRemove(false);

@@ -533,13 +533,15 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
         return setValue0(result == null ? SUCCESS : result);
     }
 
+    //setFailure 的cause都是用CauseHolder封装起来的
     private boolean setFailure0(Throwable cause) {
         return setValue0(new CauseHolder(checkNotNull(cause, "cause")));
     }
 
+    //当result是null或者UNCANCELLABLE时，可以设置result，此时状态为未完成
+    //只可以对未完成的result进行设置
     private boolean setValue0(Object objResult) {
-        if (RESULT_UPDATER.compareAndSet(this, null, objResult) ||
-            RESULT_UPDATER.compareAndSet(this, UNCANCELLABLE, objResult)) {
+        if (RESULT_UPDATER.compareAndSet(this, null, objResult) || RESULT_UPDATER.compareAndSet(this, UNCANCELLABLE, objResult)) {
             checkNotifyWaiters();
             return true;
         }
@@ -721,8 +723,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
         }
     }
 
-    private static void notifyProgressiveListeners0(
-            ProgressiveFuture<?> future, GenericProgressiveFutureListener<?>[] listeners, long progress, long total) {
+    private static void notifyProgressiveListeners0(ProgressiveFuture<?> future, GenericProgressiveFutureListener<?>[] listeners, long progress, long total) {
         for (GenericProgressiveFutureListener<?> l: listeners) {
             if (l == null) {
                 break;
@@ -732,8 +733,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    private static void notifyProgressiveListener0(
-            ProgressiveFuture future, GenericProgressiveFutureListener l, long progress, long total) {
+    private static void notifyProgressiveListener0(ProgressiveFuture future, GenericProgressiveFutureListener l, long progress, long total) {
         try {
             l.operationProgressed(future, progress, total);
         } catch (Throwable t) {
@@ -741,10 +741,13 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
         }
     }
 
+    //是否已取消
     private static boolean isCancelled0(Object result) {
         return result instanceof CauseHolder && ((CauseHolder) result).cause instanceof CancellationException;
     }
 
+    // result为null，未设置
+    // 或者result为UNCANCELLABLE，不可取消，状态都为未完成
     private static boolean isDone0(Object result) {
         return result != null && result != UNCANCELLABLE;
     }

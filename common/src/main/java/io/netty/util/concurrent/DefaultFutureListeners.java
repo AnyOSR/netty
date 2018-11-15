@@ -20,12 +20,11 @@ import java.util.Arrays;
 final class DefaultFutureListeners {
 
     private GenericFutureListener<? extends Future<?>>[] listeners;
-    private int size;
+    private int size;                                                     //待写位置
     private int progressiveSize; // the number of progressive listeners
 
     @SuppressWarnings("unchecked")
-    DefaultFutureListeners(
-            GenericFutureListener<? extends Future<?>> first, GenericFutureListener<? extends Future<?>> second) {
+    DefaultFutureListeners(GenericFutureListener<? extends Future<?>> first, GenericFutureListener<? extends Future<?>> second) {
         listeners = new GenericFutureListener[2];
         listeners[0] = first;
         listeners[1] = second;
@@ -57,9 +56,9 @@ final class DefaultFutureListeners {
         int size = this.size;
         for (int i = 0; i < size; i ++) {
             if (listeners[i] == l) {
-                int listenersToMove = size - i - 1;
+                int listenersToMove = size - i - 1;            // size - (i+1)
                 if (listenersToMove > 0) {
-                    System.arraycopy(listeners, i + 1, listeners, i, listenersToMove);
+                    System.arraycopy(listeners, i + 1, listeners, i, listenersToMove);     //移动
                 }
                 listeners[-- size] = null;
                 this.size = size;
