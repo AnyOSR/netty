@@ -112,6 +112,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         this.addTaskWakesUp = addTaskWakesUp;
 
         //这个thread干嘛的？善后？
+        //run是子类待实现的要执行的操作，当子类执行的操作完成以后，后续执行一些收尾工作
         thread = threadFactory.newThread(new Runnable() {
             @Override
             public void run() {

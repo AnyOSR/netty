@@ -57,12 +57,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class NioEventLoop extends SingleThreadEventLoop {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(NioEventLoop.class);
-
     private static final int CLEANUP_INTERVAL = 256; // XXX Hard-coded value, but won't need customization.
-
-    private static final boolean DISABLE_KEYSET_OPTIMIZATION =
-            SystemPropertyUtil.getBoolean("io.netty.noKeySetOptimization", false);
-
+    private static final boolean DISABLE_KEYSET_OPTIMIZATION = SystemPropertyUtil.getBoolean("io.netty.noKeySetOptimization", false);
     private static final int MIN_PREMATURE_SELECTOR_RETURNS = 3;
     private static final int SELECTOR_AUTO_REBUILD_THRESHOLD;
 
@@ -120,7 +116,6 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     private Selector selector;
     private Selector unwrappedSelector;
     private SelectedSelectionKeySet selectedKeys;
-
     private final SelectorProvider provider;
 
     /**
@@ -130,15 +125,12 @@ public final class NioEventLoop extends SingleThreadEventLoop {
      * waken up.
      */
     private final AtomicBoolean wakenUp = new AtomicBoolean();
-
     private final SelectStrategy selectStrategy;
-
     private volatile int ioRatio = 50;
     private int cancelledKeys;
     private boolean needsToSelectAgain;
 
-    NioEventLoop(NioEventLoopGroup parent, ThreadFactory threadFactory, SelectorProvider selectorProvider,
-                 SelectStrategy strategy, RejectedExecutionHandler rejectedExecutionHandler) {
+    NioEventLoop(NioEventLoopGroup parent, ThreadFactory threadFactory, SelectorProvider selectorProvider, SelectStrategy strategy, RejectedExecutionHandler rejectedExecutionHandler) {
         super(parent, threadFactory, false, DEFAULT_MAX_PENDING_TASKS, rejectedExecutionHandler);
         if (selectorProvider == null) {
             throw new NullPointerException("selectorProvider");
@@ -171,48 +163,48 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     private SelectorTuple openSelector() {
         final Selector unwrappedSelector;
         try {
-            unwrappedSelector = provider.openSelector();
+            unwrappedSelector = provider.openSelector();   //未包装的selector
         } catch (IOException e) {
             throw new ChannelException("failed to open a new selector", e);
         }
 
+        //如果关闭keySet优化，直接返回
         if (DISABLE_KEYSET_OPTIMIZATION) {
             return new SelectorTuple(unwrappedSelector);
         }
 
         final SelectedSelectionKeySet selectedKeySet = new SelectedSelectionKeySet();
 
+        //有可能是一个类，也可能是一个Throwable
         Object maybeSelectorImplClass = AccessController.doPrivileged(new PrivilegedAction<Object>() {
             @Override
             public Object run() {
                 try {
-                    return Class.forName(
-                            "sun.nio.ch.SelectorImpl",
-                            false,
-                            PlatformDependent.getSystemClassLoader());
+                    return Class.forName("sun.nio.ch.SelectorImpl", false, PlatformDependent.getSystemClassLoader());
                 } catch (Throwable cause) {
                     return cause;
                 }
             }
         });
 
-        if (!(maybeSelectorImplClass instanceof Class) ||
-                // ensure the current selector implementation is what we can instrument.
-                !((Class<?>) maybeSelectorImplClass).isAssignableFrom(unwrappedSelector.getClass())) {
-            if (maybeSelectorImplClass instanceof Throwable) {
+        //如果不是一个类(是一个Throwable) 或者 不是unwrappedSelector的实现类
+        //则直接返回
+        if (!(maybeSelectorImplClass instanceof Class) || !((Class<?>) maybeSelectorImplClass).isAssignableFrom(unwrappedSelector.getClass())) {
+            if (maybeSelectorImplClass instanceof Throwable) {     //是一个异常，输出日志
                 Throwable t = (Throwable) maybeSelectorImplClass;
                 logger.trace("failed to instrument a special java.util.Set into: {}", unwrappedSelector, t);
             }
             return new SelectorTuple(unwrappedSelector);
         }
 
+        //否则
         final Class<?> selectorImplClass = (Class<?>) maybeSelectorImplClass;
 
         Object maybeException = AccessController.doPrivileged(new PrivilegedAction<Object>() {
             @Override
             public Object run() {
                 try {
-                    Field selectedKeysField = selectorImplClass.getDeclaredField("selectedKeys");
+                    Field selectedKeysField = selectorImplClass.getDeclaredField("selectedKeys");              //都会有这两个字段？
                     Field publicSelectedKeysField = selectorImplClass.getDeclaredField("publicSelectedKeys");
 
                     Throwable cause = ReflectionUtil.trySetAccessible(selectedKeysField, true);
@@ -224,7 +216,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         return cause;
                     }
 
-                    selectedKeysField.set(unwrappedSelector, selectedKeySet);
+                    selectedKeysField.set(unwrappedSelector, selectedKeySet);               //将unwrappedSelector的selectedKeys和publicSelectedKeys字段属性替换为selectedKeySet
                     publicSelectedKeysField.set(unwrappedSelector, selectedKeySet);
                     return null;
                 } catch (NoSuchFieldException e) {
@@ -235,7 +227,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             }
         });
 
-        if (maybeException instanceof Exception) {
+        if (maybeException instanceof Exception) {   // 替换set失败
             selectedKeys = null;
             Exception e = (Exception) maybeException;
             logger.trace("failed to instrument a special java.util.Set into: {}", unwrappedSelector, e);
@@ -243,8 +235,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
         selectedKeys = selectedKeySet;
         logger.trace("instrumented a special java.util.Set into: {}", unwrappedSelector);
-        return new SelectorTuple(unwrappedSelector,
-                                 new SelectedSelectionKeySetSelector(unwrappedSelector, selectedKeySet));
+        return new SelectorTuple(unwrappedSelector, new SelectedSelectionKeySetSelector(unwrappedSelector, selectedKeySet));
     }
 
     /**
@@ -257,10 +248,11 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     @Override
     protected Queue<Runnable> newTaskQueue(int maxPendingTasks) {
         // This event loop never calls takeTask()
-        return maxPendingTasks == Integer.MAX_VALUE ? PlatformDependent.<Runnable>newMpscQueue()
-                                                    : PlatformDependent.<Runnable>newMpscQueue(maxPendingTasks);
+        return maxPendingTasks == Integer.MAX_VALUE ? PlatformDependent.<Runnable>newMpscQueue() : PlatformDependent.<Runnable>newMpscQueue(maxPendingTasks);
     }
 
+    //当前event loop是这个queue的唯一consumer？只能有一个consumer去调？
+    // 别的线程去调用的话，会提交一个任务到本 event loop，最终由eventloop去执行，且别的调用线程会阻塞一直到event loop执行完这个刚提交的任务
     @Override
     public int pendingTasks() {
         // As we use a MpscQueue we need to ensure pendingTasks() is only executed from within the EventLoop as
@@ -278,6 +270,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
      * of this event loop.  Once the specified {@link SelectableChannel} is registered, the specified {@code task} will
      * be executed by this event loop when the {@link SelectableChannel} is ready.
      */
+    //将某一个channel注册到选择器上
     public void register(final SelectableChannel ch, final int interestOps, final NioTask<?> task) {
         if (ch == null) {
             throw new NullPointerException("ch");
@@ -286,8 +279,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             throw new IllegalArgumentException("interestOps must be non-zero.");
         }
         if ((interestOps & ~ch.validOps()) != 0) {
-            throw new IllegalArgumentException(
-                    "invalid interestOps: " + interestOps + "(validOps: " + ch.validOps() + ')');
+            throw new IllegalArgumentException("invalid interestOps: " + interestOps + "(validOps: " + ch.validOps() + ')');
         }
         if (task == null) {
             throw new NullPointerException("task");
@@ -356,7 +348,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
         // Register all channels to the new Selector.
         int nChannels = 0;
-        for (SelectionKey key: oldSelector.keys()) {
+        for (SelectionKey key: oldSelector.keys()) {   //遍历注册到当前selector的key集合
             Object a = key.attachment();
             try {
                 if (!key.isValid() || key.channel().keyFor(newSelectorTuple.unwrappedSelector) != null) {
@@ -365,7 +357,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
                 int interestOps = key.interestOps();
                 key.cancel();
-                SelectionKey newKey = key.channel().register(newSelectorTuple.unwrappedSelector, interestOps, a);
+                SelectionKey newKey = key.channel().register(newSelectorTuple.unwrappedSelector, interestOps, a);   //将与key关联的channel注册到新的selector上
                 if (a instanceof AbstractNioChannel) {
                     // Update SelectionKey
                     ((AbstractNioChannel) a).selectionKey = newKey;
@@ -407,6 +399,12 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                     case SelectStrategy.CONTINUE:
                         continue;
                     case SelectStrategy.SELECT:
+                        //因为之前taskQueue里面没有任务，则阻塞调用select，但是现在taskQueue里面不一定没有任务，前后存在一段时间 ^t
+                        //对于nioEventLoop来说，当外部线程execute提交任务的时候，一定会调用一次wakeup
+                        //如果外部线程调用wakeup的时候，wakeUp为false，则会将wakeUp的值设置成true，并selector.wakeUp
+                        //如果外部线程调用wakeUp的时候，wakeUp为true，则不会实际的去掉用selector.wakeUp
+                        //则，如果有任务在 ^t这段时间内经由外部线程提交，则传入下个方法调用的参数为true，但是传入参数为true，不一定表示有任务提交？
+                        //进入下个方法时，会将wakeUp置为false
                         select(wakenUp.getAndSet(false));
 
                         // 'wakenUp.compareAndSet(false, true)' is always evaluated
@@ -455,13 +453,13 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         runAllTasks();
                     }
                 } else {
-                    final long ioStartTime = System.nanoTime();
+                    final long ioStartTime = System.nanoTime();                      //当前时间
                     try {
                         processSelectedKeys();
                     } finally {
                         // Ensure we always run tasks.
-                        final long ioTime = System.nanoTime() - ioStartTime;
-                        runAllTasks(ioTime * (100 - ioRatio) / ioRatio);
+                        final long ioTime = System.nanoTime() - ioStartTime;          // io任务执行时间
+                        runAllTasks(ioTime * (100 - ioRatio) / ioRatio); // 执行taskQueue里面的任务，最长执行时间按照ratio和ioTime计算
                     }
                 }
             } catch (Throwable t) {
@@ -494,7 +492,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     private void processSelectedKeys() {
-        if (selectedKeys != null) {
+        if (selectedKeys != null) {   //如果是替换过selectedKeys 的
             processSelectedKeysOptimized();
         } else {
             processSelectedKeysPlain(selector.selectedKeys());
@@ -703,6 +701,8 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    //wakeup 只能从别的外部线程调用
+    //且只有在wakenUp为false的情况下才调用selector.wakeUp()
     @Override
     protected void wakeup(boolean inEventLoop) {
         if (!inEventLoop && wakenUp.compareAndSet(false, true)) {
@@ -716,10 +716,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
     int selectNow() throws IOException {
         try {
-            return selector.selectNow();
+            return selector.selectNow();  //选择一系列的准备好io操作的key  会清除掉之前调用wakeUp方法的作用
         } finally {
             // restore wakeup state if needed
-            if (wakenUp.get()) {
+            if (wakenUp.get()) {         //由于清除掉了wakeup()的作用，如果之前wakenUp为true，再调用一次wakeup
                 selector.wakeup();
             }
         }
@@ -730,11 +730,11 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         try {
             int selectCnt = 0;
             long currentTimeNanos = System.nanoTime();
-            long selectDeadLineNanos = currentTimeNanos + delayNanos(currentTimeNanos);
+            long selectDeadLineNanos = currentTimeNanos + delayNanos(currentTimeNanos);  // 下一个scheduled task的deadline
             for (;;) {
                 long timeoutMillis = (selectDeadLineNanos - currentTimeNanos + 500000L) / 1000000L;
-                if (timeoutMillis <= 0) {
-                    if (selectCnt == 0) {
+                if (timeoutMillis <= 0) {     //如果下一个scheduled task已经超时
+                    if (selectCnt == 0) {     //如果还没有调用过select，则调用一次selectNow，产生可选择集合
                         selector.selectNow();
                         selectCnt = 1;
                     }
@@ -745,6 +745,15 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 // Selector#wakeup. So we need to check task queue again before executing select operation.
                 // If we don't, the task might be pended until select operation was timed out.
                 // It might be pended until idle timeout if IdleStateHandler existed in pipeline.
+
+                //(wakeUp只有在刚进入本方法时会设置为false，由false设置成true的情况有:1.此处，2：外部线程调 用wakeUp)
+                //如果还没有超时
+                //如果在任务提交时wakenUp当前为true，则外部线程无法调用wakeUp来唤醒阻塞在select上面的线程
+                //所以需要再次检查是否有任务
+                //这儿为什么要将wakenUp从false置为true？
+                //如果有任务，且在刚进入此方法到这儿，没有外部线程添加任务，则将wakeUp设置为true，调用selectNow()且break   那任务肯定是在 ^t那段时间添加的
+                //           如果cas失败，则肯定有外部线程将wakeUp由false设置为true，下一次select(...)也会立即返回
+                //
                 if (hasTasks() && wakenUp.compareAndSet(false, true)) {
                     selector.selectNow();
                     selectCnt = 1;
@@ -754,6 +763,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 int selectedKeys = selector.select(timeoutMillis);
                 selectCnt ++;
 
+                //这儿的wakeUp是外部线程将其置为true的(如果是eventLoop置为true的，早就break返回了)
                 if (selectedKeys != 0 || oldWakenUp || wakenUp.get() || hasTasks() || hasScheduledTasks()) {
                     // - Selected something,
                     // - waken up by user, or
@@ -780,13 +790,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 if (time - TimeUnit.MILLISECONDS.toNanos(timeoutMillis) >= currentTimeNanos) {
                     // timeoutMillis elapsed without anything selected.
                     selectCnt = 1;
-                } else if (SELECTOR_AUTO_REBUILD_THRESHOLD > 0 &&
-                        selectCnt >= SELECTOR_AUTO_REBUILD_THRESHOLD) {
+                } else if (SELECTOR_AUTO_REBUILD_THRESHOLD > 0 && selectCnt >= SELECTOR_AUTO_REBUILD_THRESHOLD) {
                     // The selector returned prematurely many times in a row.
                     // Rebuild the selector to work around the problem.
-                    logger.warn(
-                            "Selector.select() returned prematurely {} times in a row; rebuilding Selector {}.",
-                            selectCnt, selector);
+                    logger.warn("Selector.select() returned prematurely {} times in a row; rebuilding Selector {}.", selectCnt, selector);
 
                     rebuildSelector();
                     selector = this.selector;
@@ -802,19 +809,20 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
             if (selectCnt > MIN_PREMATURE_SELECTOR_RETURNS) {
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Selector.select() returned prematurely {} times in a row for Selector {}.",
-                            selectCnt - 1, selector);
+                    logger.debug("Selector.select() returned prematurely {} times in a row for Selector {}.", selectCnt - 1, selector);
                 }
             }
         } catch (CancelledKeyException e) {
             if (logger.isDebugEnabled()) {
-                logger.debug(CancelledKeyException.class.getSimpleName() + " raised by a Selector {} - JDK bug?",
-                        selector, e);
+                logger.debug(CancelledKeyException.class.getSimpleName() + " raised by a Selector {} - JDK bug?", selector, e);
             }
             // Harmless exception - log anyway
         }
     }
 
+    //更新 准备好的SelectionKeys集合
+    //已经select过了，将needsToSelectAgain置为false
+    //且清除wakeUp的效果
     private void selectAgain() {
         needsToSelectAgain = false;
         try {

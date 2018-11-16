@@ -25,6 +25,8 @@ final class DefaultSelectStrategy implements SelectStrategy {
 
     private DefaultSelectStrategy() { }
 
+    //有task，则返回准备好IO操作的channel数量，大于等于0
+    //没有task，则表明可以阻塞调用select操作
     @Override
     public int calculateStrategy(IntSupplier selectSupplier, boolean hasTasks) throws Exception {
         return hasTasks ? selectSupplier.get() : SelectStrategy.SELECT;

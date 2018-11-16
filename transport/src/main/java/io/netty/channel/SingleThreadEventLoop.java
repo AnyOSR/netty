@@ -29,8 +29,7 @@ import java.util.concurrent.ThreadFactory;
  */
 public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor implements EventLoop {
 
-    protected static final int DEFAULT_MAX_PENDING_TASKS = Math.max(16,
-            SystemPropertyUtil.getInt("io.netty.eventLoop.maxPendingTasks", Integer.MAX_VALUE));
+    protected static final int DEFAULT_MAX_PENDING_TASKS = Math.max(16, SystemPropertyUtil.getInt("io.netty.eventLoop.maxPendingTasks", Integer.MAX_VALUE));
 
     /**
      * @see {@link SingleThreadEventExecutor#SingleThreadEventExecutor(EventExecutorGroup, ThreadFactory, boolean)}
@@ -39,9 +38,7 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
         this(parent, threadFactory, addTaskWakesUp, DEFAULT_MAX_PENDING_TASKS, RejectedExecutionHandlers.reject());
     }
 
-    protected SingleThreadEventLoop(EventLoopGroup parent, ThreadFactory threadFactory,
-                                    boolean addTaskWakesUp, int maxPendingTasks,
-                                    RejectedExecutionHandler rejectedExecutionHandler) {
+    protected SingleThreadEventLoop(EventLoopGroup parent, ThreadFactory threadFactory, boolean addTaskWakesUp, int maxPendingTasks, RejectedExecutionHandler rejectedExecutionHandler) {
         super(parent, threadFactory, addTaskWakesUp, maxPendingTasks, rejectedExecutionHandler);
     }
 

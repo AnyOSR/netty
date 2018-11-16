@@ -20,6 +20,7 @@ import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Iterator;
 
+//数组支持的set
 final class SelectedSelectionKeySet extends AbstractSet<SelectionKey> {
 
     SelectionKey[] keys;
@@ -67,6 +68,7 @@ final class SelectedSelectionKeySet extends AbstractSet<SelectionKey> {
         reset(0);
     }
 
+    //清空所有数据
     void reset(int start) {
         Arrays.fill(keys, start, size, null);
         size = 0;
