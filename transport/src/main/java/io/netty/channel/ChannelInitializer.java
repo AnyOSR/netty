@@ -106,6 +106,8 @@ public abstract class ChannelInitializer<C extends Channel> extends ChannelInbou
         }
     }
 
+    //调用initChannel，最后将当前initializer从pipeline中移除，返回是否初始化成功
+    //只会有一个线程初始化成功
     @SuppressWarnings("unchecked")
     private boolean initChannel(ChannelHandlerContext ctx) throws Exception {
         if (initMap.putIfAbsent(ctx, Boolean.TRUE) == null) { // Guard against re-entrance.
@@ -120,9 +122,11 @@ public abstract class ChannelInitializer<C extends Channel> extends ChannelInbou
             }
             return true;
         }
+        //如果之前已经有线程put了，直接返回false
         return false;
     }
 
+    //将当前handle从channelpipeline中移除
     private void remove(ChannelHandlerContext ctx) {
         try {
             ChannelPipeline pipeline = ctx.pipeline();

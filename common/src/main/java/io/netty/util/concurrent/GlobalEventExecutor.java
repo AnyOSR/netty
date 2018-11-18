@@ -37,9 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class GlobalEventExecutor extends AbstractScheduledEventExecutor {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(GlobalEventExecutor.class);
-
     private static final long SCHEDULE_QUIET_PERIOD_INTERVAL = TimeUnit.SECONDS.toNanos(1);
-
     public static final GlobalEventExecutor INSTANCE = new GlobalEventExecutor();
 
     final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<Runnable>();
@@ -55,8 +53,7 @@ public final class GlobalEventExecutor extends AbstractScheduledEventExecutor {
     // can trigger the creation of a thread from arbitrary thread groups; for this reason, the thread factory must not
     // be sticky about its thread group
     // visible for testing
-    final ThreadFactory threadFactory =
-            new DefaultThreadFactory(DefaultThreadFactory.toPoolName(getClass()), false, Thread.NORM_PRIORITY, null);
+    final ThreadFactory threadFactory = new DefaultThreadFactory(DefaultThreadFactory.toPoolName(getClass()), false, Thread.NORM_PRIORITY, null);
     private final TaskRunner taskRunner = new TaskRunner();
     private final AtomicBoolean started = new AtomicBoolean();
     volatile Thread thread;

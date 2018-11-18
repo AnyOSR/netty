@@ -48,9 +48,9 @@ import java.util.Map;
  */
 public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C extends Channel> implements Cloneable {
 
-    volatile EventLoopGroup group;
     private volatile ChannelFactory<? extends C> channelFactory;
     private volatile SocketAddress localAddress;
+    volatile EventLoopGroup group;
     private final Map<ChannelOption<?>, Object> options = new LinkedHashMap<ChannelOption<?>, Object>();
     private final Map<AttributeKey<?>, Object> attrs = new LinkedHashMap<AttributeKey<?>, Object>();
     private volatile ChannelHandler handler;
@@ -343,9 +343,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
 
     abstract void init(Channel channel) throws Exception;
 
-    private static void doBind0(
-            final ChannelFuture regFuture, final Channel channel,
-            final SocketAddress localAddress, final ChannelPromise promise) {
+    private static void doBind0(final ChannelFuture regFuture, final Channel channel, final SocketAddress localAddress, final ChannelPromise promise) {
 
         // This method is invoked before channelRegistered() is triggered.  Give user handlers a chance to set up
         // the pipeline in its channelRegistered() implementation.
@@ -399,30 +397,26 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         return attrs;
     }
 
-    static void setChannelOptions(
-            Channel channel, Map<ChannelOption<?>, Object> options, InternalLogger logger) {
+    static void setChannelOptions(Channel channel, Map<ChannelOption<?>, Object> options, InternalLogger logger) {
         for (Map.Entry<ChannelOption<?>, Object> e: options.entrySet()) {
             setChannelOption(channel, e.getKey(), e.getValue(), logger);
         }
     }
 
-    static void setChannelOptions(
-            Channel channel, Map.Entry<ChannelOption<?>, Object>[] options, InternalLogger logger) {
+    static void setChannelOptions(Channel channel, Map.Entry<ChannelOption<?>, Object>[] options, InternalLogger logger) {
         for (Map.Entry<ChannelOption<?>, Object> e: options) {
             setChannelOption(channel, e.getKey(), e.getValue(), logger);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static void setChannelOption(
-            Channel channel, ChannelOption<?> option, Object value, InternalLogger logger) {
+    private static void setChannelOption(Channel channel, ChannelOption<?> option, Object value, InternalLogger logger) {
         try {
             if (!channel.config().setOption((ChannelOption<Object>) option, value)) {
                 logger.warn("Unknown channel option '{}' for channel '{}'", option, channel);
             }
         } catch (Throwable t) {
-            logger.warn(
-                    "Failed to set channel option '{}' with value '{}' for channel '{}'", option, value, channel, t);
+            logger.warn("Failed to set channel option '{}' with value '{}' for channel '{}'", option, value, channel, t);
         }
     }
 
