@@ -99,10 +99,13 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return handle;
     }
 
+    //新建ChannelHandlerContext
     private AbstractChannelHandlerContext newContext(EventExecutorGroup group, String name, ChannelHandler handler) {
         return new DefaultChannelHandlerContext(this, childExecutor(group), name, handler);
     }
 
+    //每次新建ChannelHandlerContext的时候，根据config的参数来决定，对于每一个同样的EventExecutorGroup，
+    // 分配给ChannelHandlerContext的executor要不要一样
     private EventExecutor childExecutor(EventExecutorGroup group) {
         if (group == null) {
             return null;
@@ -188,11 +191,11 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     public final ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
         final AbstractChannelHandlerContext newCtx;
         synchronized (this) {
-            checkMultiplicity(handler);
+            checkMultiplicity(handler);      //对handle的isSharable注解进行检查
 
-            newCtx = newContext(group, filterName(name, handler), handler);
+            newCtx = newContext(group, filterName(name, handler), handler);         //新建ChannelHandlerContext
 
-            addLast0(newCtx);
+            addLast0(newCtx);           //将生成的ChannelHandlerContext加入到pipeline中
 
             // If the registered is false it means that the channel was not registered on an eventloop yet.
             // In this case we add the context to the pipeline and add a task that will call
@@ -365,6 +368,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return this;
     }
 
+    //添加handlers
     @Override
     public final ChannelPipeline addLast(ChannelHandler... handlers) {
         return addLast(null, handlers);
@@ -577,7 +581,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
-    //触发handlerAdded事件
+    //触发ctx的handlerAdded事件
     private void callHandlerAdded0(final AbstractChannelHandlerContext ctx) {
         try {
             // We must call setAddComplete before calling handlerAdded. Otherwise if the handlerAdded method generates
@@ -1062,6 +1066,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
+    //看来PendingHandlerCallback只是针对自己的ctx做了handlerAdded的触发
     private void callHandlerAddedForAllHandlers() {
         final PendingHandlerCallback pendingHandlerCallbackHead;
         synchronized (this) {
@@ -1211,6 +1216,8 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             unsafe.bind(localAddress, promise);
         }
 
+        //最终通过unSafe去做一些操作
+        //所有的outbound最终都会流向head ，unSafe
         @Override
         public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
             unsafe.connect(remoteAddress, localAddress, promise);
@@ -1235,6 +1242,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         public void read(ChannelHandlerContext ctx) {
             unsafe.beginRead();
         }
+
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
@@ -1308,8 +1316,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
+    //每个PendingHandlerCallback自身可以构成一个链表
+    //而ChannelHandlerContext本质上也是一个链表
+    //每一个PendingHandlerCallback可以对所有的ChannelHandlerContext都执行
+    //不同的PendingHandlerCallback
     private abstract static class PendingHandlerCallback implements Runnable {
-        final AbstractChannelHandlerContext ctx;
+        final AbstractChannelHandlerContext ctx;          //ChannelHandlerContext
         PendingHandlerCallback next;
 
         PendingHandlerCallback(AbstractChannelHandlerContext ctx) {

@@ -52,6 +52,8 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
         return (EventLoop) super.next();
     }
 
+    //将channel注册到当前event loop上
+    //每一次注册都会有对应的channel promise
     @Override
     public ChannelFuture register(Channel channel) {
         return register(channel, new DefaultChannelPromise(channel, this));

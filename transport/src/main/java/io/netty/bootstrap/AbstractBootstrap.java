@@ -307,8 +307,8 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     final ChannelFuture initAndRegister() {
         Channel channel = null;
         try {
-            channel = channelFactory().newChannel();
-            init(channel);
+            channel = channelFactory().newChannel();    //根据配置的channel class来初始化channel，并初始化pipeline(head tail)、unSafe、底层channel、intOpr
+            init(channel);                              //初始化一些属性 以及添加ChannelInitializer
         } catch (Throwable t) {
             if (channel != null) {
                 // channel can be null if newChannel crashed (eg SocketException("too many open files"))
@@ -320,7 +320,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
             return new DefaultChannelPromise(new FailedChannel(), GlobalEventExecutor.INSTANCE).setFailure(t);
         }
 
-        ChannelFuture regFuture = group().register(channel);
+        ChannelFuture regFuture = group().register(channel);         //将channel注册到某一个event loop上
         if (regFuture.cause() != null) {
             if (channel.isRegistered()) {
                 channel.close();

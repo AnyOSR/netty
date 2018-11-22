@@ -21,6 +21,8 @@ import io.netty.util.concurrent.GenericFutureListener;
 
 import java.util.concurrent.TimeUnit;
 
+//void promise 不能添加listener，很多操作都没有
+//有一个fireException的功能
 final class VoidChannelPromise extends AbstractFuture<Void> implements ChannelPromise {
 
     private final Channel channel;

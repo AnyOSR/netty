@@ -74,6 +74,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
      * @param parent
      *        the parent of this channel. {@code null} if there's no parent.
      */
+    //每一个Channel必然会有一个unsafe
+    //一个pipeline
     protected AbstractChannel(Channel parent) {
         this.parent = parent;
         unsafe = newUnsafe();
@@ -87,6 +89,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
         return new DefaultChannelPipeline(this);
     }
 
+    //先写数据到outboundBuffer，然后刷新
     @Override
     public boolean isWritable() {
         ChannelOutboundBuffer buf = unsafe.outboundBuffer();
@@ -409,6 +412,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            //绑定eventLoop
             AbstractChannel.this.eventLoop = eventLoop;
 
             if (eventLoop.inEventLoop()) {
@@ -444,7 +448,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
-                pipeline.invokeHandlerAddedIfNeeded();
+                pipeline.invokeHandlerAddedIfNeeded(); //触发handlerAdded()
 
                 safeSetSuccess(promise);
                 pipeline.fireChannelRegistered();
@@ -1049,6 +1053,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
         return msg;
     }
 
+    //只支持setClosed()方法
     static final class CloseFuture extends DefaultChannelPromise {
 
         CloseFuture(AbstractChannel ch) {
