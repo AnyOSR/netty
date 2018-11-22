@@ -108,8 +108,8 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             return null;
         }
         Boolean pinEventExecutor = channel.config().getOption(ChannelOption.SINGLE_EVENTEXECUTOR_PER_GROUP);
-        if (pinEventExecutor != null && !pinEventExecutor) {
-            return group.next();
+        if (pinEventExecutor != null && !pinEventExecutor) {   //如果不是SINGLE_EVENTEXECUTOR_PER_GROUP，则group.next()
+            return group.next();                               //则每次的EventExecutor可能不一样
         }
         Map<EventExecutorGroup, EventExecutor> childExecutors = this.childExecutors;
         if (childExecutors == null) {
@@ -118,7 +118,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
         // Pin one of the child executors once and remember it so that the same child executor
         // is used to fire events for the same channel.
-        EventExecutor childExecutor = childExecutors.get(group);
+        EventExecutor childExecutor = childExecutors.get(group);         //否则，每次取出来的都是同一个EventExecutor
         if (childExecutor == null) {
             childExecutor = group.next();
             childExecutors.put(group, childExecutor);
@@ -233,8 +233,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     }
 
     @Override
-    public final ChannelPipeline addBefore(
-            EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
+    public final ChannelPipeline addBefore(EventExecutorGroup group, String baseName, String name, ChannelHandler handler) {
         final AbstractChannelHandlerContext newCtx;
         final AbstractChannelHandlerContext ctx;
         synchronized (this) {
@@ -387,6 +386,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return this;
     }
 
+    //返回handler对应的name
     private String generateName(ChannelHandler handler) {
         Map<Class<?>, String> cache = nameCaches.get();
         Class<?> handlerType = handler.getClass();
@@ -411,6 +411,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return name;
     }
 
+    //simpleName + "#0"
     private static String generateName0(Class<?> handlerType) {
         return StringUtil.simpleClassName(handlerType) + "#0";
     }
@@ -497,13 +498,11 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
     @Override
     @SuppressWarnings("unchecked")
-    public final <T extends ChannelHandler> T replace(
-            Class<T> oldHandlerType, String newName, ChannelHandler newHandler) {
+    public final <T extends ChannelHandler> T replace(Class<T> oldHandlerType, String newName, ChannelHandler newHandler) {
         return (T) replace(getContextOrDie(oldHandlerType), newName, newHandler);
     }
 
-    private ChannelHandler replace(
-            final AbstractChannelHandlerContext ctx, final String newName, ChannelHandler newHandler) {
+    private ChannelHandler replace(final AbstractChannelHandlerContext ctx, final String newName, ChannelHandler newHandler) {
         assert ctx != head && ctx != tail;
 
         final AbstractChannelHandlerContext newCtx;
@@ -571,21 +570,20 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     private static void checkMultiplicity(ChannelHandler handler) {
         if (handler instanceof ChannelHandlerAdapter) {
             ChannelHandlerAdapter h = (ChannelHandlerAdapter) handler;
-            if (!h.isSharable() && h.added) {
-                throw new ChannelPipelineException(
-                        h.getClass().getName() +
-                        " is not a @Sharable handler, so can't be added or removed multiple times.");
+            if (!h.isSharable() && h.added) {     //如果handler不是Sharable，且已经added过了，则抛异常
+                throw new ChannelPipelineException(h.getClass().getName() + " is not a @Sharable handler, so can't be added or removed multiple times.");
             }
             h.added = true;
         }
     }
 
+    //触发handlerAdded事件
     private void callHandlerAdded0(final AbstractChannelHandlerContext ctx) {
         try {
             // We must call setAddComplete before calling handlerAdded. Otherwise if the handlerAdded method generates
             // any pipeline events ctx.handler() will miss them because the state will not allow it.
-            ctx.setAddComplete();
-            ctx.handler().handlerAdded(ctx);
+            ctx.setAddComplete();                         //设置状态
+            ctx.handler().handlerAdded(ctx);              //channelHandle添加到context之后，调用该方法，开始处理事件
         } catch (Throwable t) {
             boolean removed = false;
             try {
@@ -603,13 +601,9 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             }
 
             if (removed) {
-                fireExceptionCaught(new ChannelPipelineException(
-                        ctx.handler().getClass().getName() +
-                        ".handlerAdded() has thrown an exception; removed.", t));
+                fireExceptionCaught(new ChannelPipelineException(ctx.handler().getClass().getName() + ".handlerAdded() has thrown an exception; removed.", t));
             } else {
-                fireExceptionCaught(new ChannelPipelineException(
-                        ctx.handler().getClass().getName() +
-                        ".handlerAdded() has thrown an exception; also failed to remove.", t));
+                fireExceptionCaught(new ChannelPipelineException(ctx.handler().getClass().getName() + ".handlerAdded() has thrown an exception; also failed to remove.", t));
             }
         }
     }
@@ -618,13 +612,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         // Notify the complete removal.
         try {
             try {
-                ctx.handler().handlerRemoved(ctx);
+                ctx.handler().handlerRemoved(ctx);   // channelHandle从context删除后，调用该方法，不再处理事件
             } finally {
                 ctx.setRemoved();
             }
         } catch (Throwable t) {
-            fireExceptionCaught(new ChannelPipelineException(
-                    ctx.handler().getClass().getName() + ".handlerRemoved() has thrown an exception.", t));
+            fireExceptionCaught(new ChannelPipelineException(ctx.handler().getClass().getName() + ".handlerRemoved() has thrown an exception.", t));
         }
     }
 
@@ -725,6 +718,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
+    //根据handlerType查找ChannelHandlerContext
     @Override
     public final ChannelHandlerContext context(Class<? extends ChannelHandler> handlerType) {
         if (handlerType == null) {
@@ -1028,6 +1022,8 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
+    //返回name为入参的ChannelHandlerContext
+    //没找到则返回null
     private AbstractChannelHandlerContext context0(String name) {
         AbstractChannelHandlerContext context = head.next;
         while (context != tail) {
@@ -1111,10 +1107,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
      */
     protected void onUnhandledInboundException(Throwable cause) {
         try {
-            logger.warn(
-                    "An exceptionCaught() event was fired, and it reached at the tail of the pipeline. " +
-                            "It usually means the last handler in the pipeline did not handle the exception.",
-                    cause);
+            logger.warn("An exceptionCaught() event was fired, and it reached at the tail of the pipeline. " + "It usually means the last handler in the pipeline did not handle the exception.", cause);
         } finally {
             ReferenceCountUtil.release(cause);
         }
@@ -1127,9 +1120,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
      */
     protected void onUnhandledInboundMessage(Object msg) {
         try {
-            logger.debug(
-                    "Discarded inbound message {} that reached at the tail of the pipeline. " +
-                            "Please check your pipeline configuration.", msg);
+            logger.debug("Discarded inbound message {} that reached at the tail of the pipeline. " + "Please check your pipeline configuration.", msg);
         } finally {
             ReferenceCountUtil.release(msg);
         }
@@ -1190,8 +1181,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         public void channelReadComplete(ChannelHandlerContext ctx) throws Exception { }
     }
 
-    final class HeadContext extends AbstractChannelHandlerContext
-            implements ChannelOutboundHandler, ChannelInboundHandler {
+    final class HeadContext extends AbstractChannelHandlerContext implements ChannelOutboundHandler, ChannelInboundHandler {
 
         private final Unsafe unsafe;
 
@@ -1217,17 +1207,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
 
         @Override
-        public void bind(
-                ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise)
-                throws Exception {
+        public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise) throws Exception {
             unsafe.bind(localAddress, promise);
         }
 
         @Override
-        public void connect(
-                ChannelHandlerContext ctx,
-                SocketAddress remoteAddress, SocketAddress localAddress,
-                ChannelPromise promise) throws Exception {
+        public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
             unsafe.connect(remoteAddress, localAddress, promise);
         }
 
@@ -1355,9 +1340,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
                     executor.execute(this);
                 } catch (RejectedExecutionException e) {
                     if (logger.isWarnEnabled()) {
-                        logger.warn(
-                                "Can't invoke handlerAdded() as the EventExecutor {} rejected it, removing handler {}.",
-                                executor, ctx.name(), e);
+                        logger.warn("Can't invoke handlerAdded() as the EventExecutor {} rejected it, removing handler {}.", executor, ctx.name(), e);
                     }
                     remove0(ctx);
                     ctx.setRemoved();
@@ -1387,9 +1370,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
                     executor.execute(this);
                 } catch (RejectedExecutionException e) {
                     if (logger.isWarnEnabled()) {
-                        logger.warn(
-                                "Can't invoke handlerRemoved() as the EventExecutor {} rejected it," +
-                                        " removing handler {}.", executor, ctx.name(), e);
+                        logger.warn("Can't invoke handlerRemoved() as the EventExecutor {} rejected it," + " removing handler {}.", executor, ctx.name(), e);
                     }
                     // remove0(...) was call before so just call AbstractChannelHandlerContext.setRemoved().
                     ctx.setRemoved();

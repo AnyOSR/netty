@@ -49,7 +49,6 @@ import java.util.concurrent.TimeUnit;
 public abstract class AbstractNioChannel extends AbstractChannel {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractNioChannel.class);
-
     private static final ClosedChannelException DO_CLOSE_CLOSED_CHANNEL_EXCEPTION = ThrowableUtil.unknownStackTrace(new ClosedChannelException(), AbstractNioChannel.class, "doClose()");
 
     private final SelectableChannel ch;
@@ -186,8 +185,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         }
 
         @Override
-        public final void connect(
-                final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise promise) {
+        public final void connect(final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise promise) {
             if (!promise.setUncancellable() || !ensureOpen(promise)) {
                 return;
             }
@@ -212,8 +210,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                             @Override
                             public void run() {
                                 ChannelPromise connectPromise = AbstractNioChannel.this.connectPromise;
-                                ConnectTimeoutException cause =
-                                        new ConnectTimeoutException("connection timed out: " + remoteAddress);
+                                ConnectTimeoutException cause = new ConnectTimeoutException("connection timed out: " + remoteAddress);
                                 if (connectPromise != null && connectPromise.tryFailure(cause)) {
                                     close(voidPromise());
                                 }
@@ -391,16 +388,16 @@ public abstract class AbstractNioChannel extends AbstractChannel {
      */
     protected final ByteBuf newDirectBuffer(ByteBuf buf) {
         final int readableBytes = buf.readableBytes();
-        if (readableBytes == 0) {
+        if (readableBytes == 0) {        //可读字节为0
             ReferenceCountUtil.safeRelease(buf);
             return Unpooled.EMPTY_BUFFER;
         }
 
         final ByteBufAllocator alloc = alloc();
         if (alloc.isDirectBufferPooled()) {
-            ByteBuf directBuf = alloc.directBuffer(readableBytes);
-            directBuf.writeBytes(buf, buf.readerIndex(), readableBytes);
-            ReferenceCountUtil.safeRelease(buf);
+            ByteBuf directBuf = alloc.directBuffer(readableBytes);         //分配一个initialCapacity为readableBytes的ByteBuf
+            directBuf.writeBytes(buf, buf.readerIndex(), readableBytes);   //将buf的内容读到新分配的directBuf
+            ReferenceCountUtil.safeRelease(buf);                           //释放点原来的buf
             return directBuf;
         }
 

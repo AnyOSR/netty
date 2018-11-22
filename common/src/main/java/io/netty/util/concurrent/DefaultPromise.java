@@ -86,6 +86,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
         executor = null;
     }
 
+    //设置成功之后，然后通知所有的listener
     @Override
     public Promise<V> setSuccess(V result) {
         if (setSuccess0(result)) {

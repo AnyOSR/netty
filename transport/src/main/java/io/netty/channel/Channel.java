@@ -34,8 +34,8 @@ import java.net.SocketAddress;
  * A nexus to a network socket or a component which is capable of I/O
  * operations such as read, write, connect, and bind.
  * <p>
- * A channel provides a user:
- * <ul>
+ * A channel provides a user:                                                         每一个channel都被分配给某一个eventLoop，每一个channel都有一个pipeline
+ * <ul>                                                                               每一个channelHandle都可以有一个executorGroup，都有一个ChannelHandleContext
  * <li>the current state of the channel (e.g. is it open? is it connected?),</li>                                   // 当前连接状态
  * <li>the {@linkplain ChannelConfig configuration parameters} of the channel (e.g. receive buffer size),</li>      // 连接参数
  * <li>the I/O operations that the channel supports (e.g. read, write, connect, and bind), and</li>                 // 提供读写等操作

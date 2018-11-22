@@ -284,6 +284,7 @@ public final class StringUtil {
      * Generates a simplified name from a {@link Class}.  Similar to {@link Class#getSimpleName()}, but it works fine
      * with anonymous classes.
      */
+    //返回类的simpleName
     public static String simpleClassName(Class<?> clazz) {
         String className = ObjectUtil.checkNotNull(clazz, "clazz").getName();
         final int lastDotIdx = className.lastIndexOf(PACKAGE_SEPARATOR_CHAR);

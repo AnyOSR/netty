@@ -125,8 +125,7 @@ import java.nio.channels.Channels;
  * what fundamental differences they have, how they flow in a  pipeline,  and how to handle
  * the operation in your application.
  */
-public interface ChannelHandlerContext
-         extends AttributeMap {
+public interface ChannelHandlerContext extends AttributeMap {
 
     /**
      * Return the {@link Channel} which is bound to the {@link ChannelHandlerContext}.
