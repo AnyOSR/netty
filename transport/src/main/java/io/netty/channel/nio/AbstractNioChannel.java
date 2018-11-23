@@ -328,7 +328,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
     protected void doRegister() throws Exception {
         boolean selected = false;
         for (;;) {
-            try {
+            try {     //nio注册的时候，将channel作为了一个att绑定到selectionKey上了，ops都为0
                 selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
                 return;
             } catch (CancelledKeyException e) {
