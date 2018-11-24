@@ -174,15 +174,20 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             currentChildAttrs = childAttrs.entrySet().toArray(newAttrArray(childAttrs.size()));
         }
 
+        //ServerSocketChannel增加一个ChannelInitializer的handle
+        //当ServerSocketChannel首次注册的时候，会触发handlerAdded
+        //ChannelInitializer的handlerAdded会调用initChannel方法
         p.addLast(new ChannelInitializer<Channel>() {
             @Override
             public void initChannel(final Channel ch) throws Exception {
                 final ChannelPipeline pipeline = ch.pipeline();
-                ChannelHandler handler = handler();
+                ChannelHandler handler = handler();   //获取ServerBootStrap配置的handle，将其添加到ServerSocketChannel的pipeline中
                 if (handler != null) {
                     pipeline.addLast(handler);
                 }
 
+                //然后在event Loop中执行
+                // 一个在ServerSocketChannel的pipeline中添加一个ServerBootstrapAcceptor的任务
                 ch.eventLoop().execute(new Runnable() {
                     @Override
                     public void run() {

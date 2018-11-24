@@ -415,6 +415,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             //绑定eventLoop
             AbstractChannel.this.eventLoop = eventLoop;
 
+            //在event loop中执行具体的register
             if (eventLoop.inEventLoop()) {
                 register0(promise);
             } else {
@@ -449,7 +450,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
-                pipeline.invokeHandlerAddedIfNeeded(); //触发handlerAdded()
+                pipeline.invokeHandlerAddedIfNeeded(); // 首次注册的话触发handlerAdded()
 
                 safeSetSuccess(promise);
                 pipeline.fireChannelRegistered();
@@ -493,16 +494,16 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                         "address (" + localAddress + ") anyway as requested.");
             }
 
-            boolean wasActive = isActive();
+            boolean wasActive = isActive();   //channel是否有效 对于 ServerSocketChannel...   对于SocketChannel...
             try {
-                doBind(localAddress);
+                doBind(localAddress);         //子类实现具体的bind逻辑
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
                 closeIfClosed();
                 return;
             }
 
-            if (!wasActive && isActive()) {
+            if (!wasActive && isActive()) {    //如果之前isActive为false，现在为true，需要触发channelActive方法
                 invokeLater(new Runnable() {
                     @Override
                     public void run() {
@@ -511,7 +512,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 });
             }
 
-            safeSetSuccess(promise);
+            safeSetSuccess(promise);            //设定绑定结果成功
         }
 
         @Override

@@ -152,9 +152,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
         return promise;
     }
 
-    private static void doConnect0(
-            final ChannelFuture regFuture, final Channel channel,
-            final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise promise) {
+    private static void doConnect0(final ChannelFuture regFuture, final Channel channel, final SocketAddress remoteAddress, final SocketAddress localAddress, final ChannelPromise promise) {
 
         // This method is invoked before channelRegistered() is triggered.  Give user handlers a chance to set up
         // the pipeline in its channelRegistered() implementation.

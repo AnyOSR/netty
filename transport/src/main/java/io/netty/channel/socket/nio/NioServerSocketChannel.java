@@ -99,6 +99,7 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel implements
         return config;
     }
 
+    //返回当前底层ServerSocketChannel是否已经绑定到某一端口
     @Override
     public boolean isActive() {
         return javaChannel().socket().isBound();

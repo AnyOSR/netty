@@ -42,15 +42,13 @@ final class LoggingHandler implements ChannelInboundHandler, ChannelOutboundHand
     }
 
     @Override
-    public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise)
-            throws Exception {
+    public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise) throws Exception {
         log(Event.BIND, "localAddress=" + localAddress);
         ctx.bind(localAddress, promise);
     }
 
     @Override
-    public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress,
-            ChannelPromise promise) throws Exception {
+    public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
         log(Event.CONNECT, "remoteAddress=" + remoteAddress + " localAddress=" + localAddress);
         ctx.connect(remoteAddress, localAddress, promise);
     }

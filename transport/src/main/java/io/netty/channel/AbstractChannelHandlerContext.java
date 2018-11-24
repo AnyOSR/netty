@@ -470,6 +470,9 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap impleme
         return deregister(newPromise());
     }
 
+    //绑定端口号
+    //这个维护了bind方法 调用链的逻辑,当前context中
+    //找到上一个outHandleContext，并调用其invokeBind方法
     @Override
     public ChannelFuture bind(final SocketAddress localAddress, final ChannelPromise promise) {
         if (localAddress == null) {
@@ -480,7 +483,7 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap impleme
             return promise;
         }
 
-        final AbstractChannelHandlerContext next = findContextOutbound();
+        final AbstractChannelHandlerContext next = findContextOutbound();   //找到前一个outHandleContext
         EventExecutor executor = next.executor();
         if (executor.inEventLoop()) {
             next.invokeBind(localAddress, promise);

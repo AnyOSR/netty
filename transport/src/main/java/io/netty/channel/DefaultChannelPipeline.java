@@ -187,6 +187,8 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return addLast(null, name, handler);
     }
 
+    //如果当前channel还没有注册
+    //会添加一个HandlerCallback任务，等channel注册的时候会调用这个HandlerCallback
     @Override
     public final ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
         final AbstractChannelHandlerContext newCtx;
@@ -202,7 +204,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             // ChannelHandler.handlerAdded(...) once the channel is registered.
             if (!registered) {
                 newCtx.setAddPending();
-                callHandlerCallbackLater(newCtx, true);
+                callHandlerCallbackLater(newCtx, true);    //如果channel还没有注册到eventLoop上，则添加一个HandlerCallback任务
                 return this;
             }
 
