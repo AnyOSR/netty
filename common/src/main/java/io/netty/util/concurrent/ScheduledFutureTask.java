@@ -126,7 +126,7 @@ final class ScheduledFutureTask<V> extends PromiseTask<V> implements ScheduledFu
                         if (p > 0) {
                             deadlineNanos += p;                //更新当前task的deadlineNanos，在当前deadlineNanos的基础上，p之后再被调度
                         } else {
-                            deadlineNanos = nanoTime() - p;    //不应该是加吗？
+                            deadlineNanos = nanoTime() - p;    //不应该是加吗？...此时 p小于0 则减
                         }
                         if (!isCancelled()) {
                             // scheduledTaskQueue can never be null as we lazy init it before submit the task!

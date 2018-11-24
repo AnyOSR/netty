@@ -208,8 +208,8 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
 
         boolean success = false;
         try {
-            boolean connected = SocketUtils.connect(javaChannel(), remoteAddress);
-            if (!connected) {
+            boolean connected = SocketUtils.connect(javaChannel(), remoteAddress);  //尝试去连接remoteAddress，由于是非阻塞模式，返回时可能连接并没有完成
+            if (!connected) {  //如果connect还没有完成，将channel的interestOps加上OP_CONNECT，等待server返回
                 selectionKey().interestOps(SelectionKey.OP_CONNECT);
             }
             success = true;
@@ -221,6 +221,7 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
         }
     }
 
+    //如果没有connect成功，抛出异常
     @Override
     protected void doFinishConnect() throws Exception {
         if (!javaChannel().finishConnect()) {

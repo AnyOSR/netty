@@ -324,6 +324,7 @@ public final class ChannelOutboundBuffer {
      */
     //报告一个进度然后丢弃？
     //writtenBytes丢弃字节数
+    //
     public void removeBytes(long writtenBytes) {
         for (;;) {
             Object msg = current();

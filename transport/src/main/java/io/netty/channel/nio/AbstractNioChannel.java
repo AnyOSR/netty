@@ -197,20 +197,22 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                 }
 
                 boolean wasActive = isActive();
-                if (doConnect(remoteAddress, localAddress)) {
+                if (doConnect(remoteAddress, localAddress)) {  //如果已经connect成功
                     fulfillConnectPromise(promise, wasActive);
-                } else {
+                } else { //否则
                     connectPromise = promise;
                     requestedRemoteAddress = remoteAddress;
 
+                    //连接返回结果(不管成功与否)和连接超时,应该只会存在一个动作
                     // Schedule connect timeout.
                     int connectTimeoutMillis = config().getConnectTimeoutMillis();
-                    if (connectTimeoutMillis > 0) {
+                    if (connectTimeoutMillis > 0) { //向event loop提交一个任务，用于connect 超时，如果超时，则close，30S,设置连接的结果为失败
                         connectTimeoutFuture = eventLoop().schedule(new Runnable() {
                             @Override
                             public void run() {
                                 ChannelPromise connectPromise = AbstractNioChannel.this.connectPromise;
                                 ConnectTimeoutException cause = new ConnectTimeoutException("connection timed out: " + remoteAddress);
+                                //server返回连接结果之后，应该会将connectPromise置为null，且取消connectTimeoutFuture这个任务？
                                 if (connectPromise != null && connectPromise.tryFailure(cause)) {
                                     close(voidPromise());
                                 }
@@ -218,11 +220,13 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                         }, connectTimeoutMillis, TimeUnit.MILLISECONDS);
                     }
 
+                    //给connectPromise增加一个listener
+                    //如果已经connect成功，那connectTimeoutFuture是不是要被取消掉？不需要，connect成功的时候，connectTimeoutFuture里面的tryFailure会失败，不会close
                     promise.addListener(new ChannelFutureListener() {
                         @Override
                         public void operationComplete(ChannelFuture future) throws Exception {
-                            if (future.isCancelled()) {
-                                if (connectTimeoutFuture != null) {
+                            if (future.isCancelled()) { //如果已经cancel
+                                if (connectTimeoutFuture != null) {      // 将connectTimeoutFuture取消
                                     connectTimeoutFuture.cancel(false);
                                 }
                                 connectPromise = null;
@@ -245,14 +249,14 @@ public abstract class AbstractNioChannel extends AbstractChannel {
 
             // Get the state as trySuccess() may trigger an ChannelFutureListener that will close the Channel.
             // We still need to ensure we call fireChannelActive() in this case.
-            boolean active = isActive();
+            boolean active = isActive();   //当前连接状态
 
             // trySuccess() will return false if a user cancelled the connection attempt.
-            boolean promiseSet = promise.trySuccess();
+            boolean promiseSet = promise.trySuccess();   //尝试设置connectionPromise为success
 
             // Regardless if the connection attempt was cancelled, channelActive() event should be triggered,
             // because what happened is what happened.
-            if (!wasActive && active) {
+            if (!wasActive && active) {   //满足条件则触发ChannelActive事件
                 pipeline().fireChannelActive();
             }
 
@@ -289,10 +293,10 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             } finally {
                 // Check for null as the connectTimeoutFuture is only created if a connectTimeoutMillis > 0 is used
                 // See https://github.com/netty/netty/issues/1770
-                if (connectTimeoutFuture != null) {
+                if (connectTimeoutFuture != null) {     //如果connectTimeoutFuture不为null，则取消掉
                     connectTimeoutFuture.cancel(false);
                 }
-                connectPromise = null;
+                connectPromise = null;   //不管怎么样，在server返回时，都会将connectPromise置为null
             }
         }
 
