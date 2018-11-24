@@ -1090,6 +1090,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         }
     }
 
+    //添加HandlerCallback任务(触发ctx的handlerAdded事件)
     private void callHandlerCallbackLater(AbstractChannelHandlerContext ctx, boolean added) {
         assert !registered;
 

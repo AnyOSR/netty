@@ -95,6 +95,8 @@ public abstract class ChannelInitializer<C extends Channel> extends ChannelInbou
     /**
      * {@inheritDoc} If override this method ensure you call super!
      */
+    //ChannelInitializer的handlerAdded是去初始化channel(handle)
+    //然后将自身从pipeline中移除
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         if (ctx.channel().isRegistered()) {
