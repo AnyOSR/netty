@@ -165,7 +165,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
                     } else {
                         channel.connect(remoteAddress, localAddress, promise);
                     }
-                    promise.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+                    promise.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);    //添加一个CLOSE_ON_FAILURE listener 用于失败时关闭掉当前channel
                 } else {
                     promise.setFailure(regFuture.cause());
                 }

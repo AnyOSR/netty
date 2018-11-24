@@ -54,7 +54,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     /**
      * Threading - synchronized(this). We are required to hold the monitor to use Java's underlying wait()/notifyAll().
      */
-    private short waiters;
+    private short waiters;    //有多少线程正阻塞在wait调用上
 
     /**
      * Threading - synchronized(this). We must prevent concurrent notification and FIFO listener notification if the
@@ -238,7 +238,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
             while (!isDone()) {
                 incWaiters();
                 try {
-                    wait();
+                    wait();     //wait方法会释放掉持有的锁，并阻塞
                 } finally {
                     decWaiters();
                 }
