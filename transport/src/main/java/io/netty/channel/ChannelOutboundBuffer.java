@@ -78,8 +78,8 @@ public final class ChannelOutboundBuffer {
     // The number of flushed entries that are not written yet
     private int flushed;
 
-    private int nioBufferCount;
-    private long nioBufferSize;
+    private int nioBufferCount;    //待刷新的nioBuffer数量
+    private long nioBufferSize;    //待刷新NioBuffer字节数
 
     private boolean inFail;
 
@@ -252,7 +252,7 @@ public final class ChannelOutboundBuffer {
         ChannelPromise promise = e.promise;
         int size = e.pendingSize;
 
-        removeEntry(e);
+        removeEntry(e);   //remove掉当前entry
 
         if (!e.cancelled) {
             // only release message, notify and decrement if it was not canceled before.
@@ -322,36 +322,35 @@ public final class ChannelOutboundBuffer {
      * Removes the fully written entries and update the reader index of the partially written entry.
      * This operation assumes all messages in this buffer is {@link ByteBuf}.
      */
-    //报告一个进度然后丢弃？
-    //writtenBytes丢弃字节数
-    //
+    //移除已写入channel的字节
+    //writtenBytes:实际已写入字节数
     public void removeBytes(long writtenBytes) {
         for (;;) {
             Object msg = current();
-            if (!(msg instanceof ByteBuf)) {
-                assert writtenBytes == 0;
+            if (!(msg instanceof ByteBuf)) {  //因为在nioBuffers()中，会从flushedEntry中向下读，条件是 是ByteBuf且属于flushEntry范围内
+                assert writtenBytes == 0;     //所以一旦出现，则有writtenBytes为0
                 break;
             }
 
-            final ByteBuf buf = (ByteBuf) msg;
+             final ByteBuf buf = (ByteBuf) msg;
             final int readerIndex = buf.readerIndex();
             final int readableBytes = buf.writerIndex() - readerIndex;
 
-            if (readableBytes <= writtenBytes) {
+            if (readableBytes <= writtenBytes) {    //当前entry已经全部读完了
                 if (writtenBytes != 0) {
                     progress(readableBytes);
                     writtenBytes -= readableBytes;
                 }
-                remove();
-            } else { // readableBytes > writtenBytes
+                remove();       //移除掉当前entry
+            } else { // readableBytes > writtenBytes  如果是部分读，只读了当前entry的一部分
                 if (writtenBytes != 0) {
-                    buf.readerIndex(readerIndex + (int) writtenBytes);
+                    buf.readerIndex(readerIndex + (int) writtenBytes); //则设置buf的rIdx
                     progress(writtenBytes);
                 }
                 break;
             }
-        }
-        clearNioBuffers();
+        }          //就算NIO_BUFFERS里面的内容没有写完，也是可以清除的，rIdx已经被更新，下次写入时会继续填充NIO_BUFFERS
+        clearNioBuffers();   //然后清除掉NIO_BUFFERS里面的内容  [就是(DirectBuffer)entry.buf] (DirectBuffer)entry.msg.tmpNioBuf   (DirectBuffer)entry.msg.buffer  (ByteBuf)entry.msg
     }
 
     // Clear all ByteBuffer from the array so these can be GC'ed.
@@ -417,10 +416,10 @@ public final class ChannelOutboundBuffer {
                         ByteBuffer nioBuf = entry.buf;
                         if (nioBuf == null) {
                             // cache ByteBuffer as it may need to create a new ByteBuffer instance if its a
-                            // derived buffer
-                            entry.buf = nioBuf = buf.internalNioBuffer(readerIndex, readableBytes);
+                            // derived buffer   利用buf.buffer创造了一个buf.tmpNioBuf,将其赋值给entry.buf，NIO_BUFFERS，entry.buf对外可见，对外的都是这个tmpNioBuf？
+                            entry.buf = nioBuf = buf.internalNioBuffer(readerIndex, readableBytes); //本次没写完下次继续写时，根据这个生成代写内容，不会重复，也不会少写
                         }
-                        nioBuffers[nioBufferCount ++] = nioBuf;
+                        nioBuffers[nioBufferCount ++] = nioBuf;       //NIO_BUFFERS和entry都持有buf.temp的引用，可能会存在内存泄露？
                     } else {
                         ByteBuffer[] nioBufs = entry.bufs;
                         if (nioBufs == null) {
@@ -794,7 +793,7 @@ public final class ChannelOutboundBuffer {
         long progress;
         long total;
         int pendingSize;
-        int count = -1;
+        int count = -1;       //ByteBuffer数组长度
         boolean cancelled;
 
         private Entry(Handle handle) {

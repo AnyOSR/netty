@@ -781,6 +781,7 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap impleme
         }
     }
 
+    //对外暴露方法
     @Override
     public ChannelFuture writeAndFlush(Object msg, ChannelPromise promise) {
         if (msg == null) {
@@ -798,15 +799,7 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap impleme
         return promise;
     }
 
-    private void invokeWriteAndFlush(Object msg, ChannelPromise promise) {
-        if (invokeHandler()) {
-            invokeWrite0(msg, promise);
-            invokeFlush0();
-        } else {
-            writeAndFlush(msg, promise);
-        }
-    }
-
+    //内部底层方法
     private void write(Object msg, boolean flush, ChannelPromise promise) {
         AbstractChannelHandlerContext next = findContextOutbound();
         EventExecutor executor = next.executor();
@@ -824,6 +817,16 @@ abstract class AbstractChannelHandlerContext extends DefaultAttributeMap impleme
                 task = WriteTask.newInstance(next, msg, promise);
             }
             safeExecute(executor, task, promise, msg);
+        }
+    }
+
+    //实际的写入方法
+    private void invokeWriteAndFlush(Object msg, ChannelPromise promise) {
+        if (invokeHandler()) {
+            invokeWrite0(msg, promise);
+            invokeFlush0();
+        } else {
+            writeAndFlush(msg, promise);
         }
     }
 

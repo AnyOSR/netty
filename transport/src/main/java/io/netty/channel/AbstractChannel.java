@@ -375,7 +375,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
     protected abstract class AbstractUnsafe implements Unsafe {
 
         private volatile ChannelOutboundBuffer outboundBuffer = new ChannelOutboundBuffer(AbstractChannel.this);
-        private boolean inFlush0;
+        private boolean inFlush0;           //是否正在刷新中
         /** true if the channel has never been registered, false otherwise */
         private boolean neverRegistered = true;
 
@@ -821,7 +821,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 ReferenceCountUtil.release(msg);
                 return;
             }
-
+            //将消息写入outboundBuffer
             outboundBuffer.addMessage(msg, size, promise);
         }
 

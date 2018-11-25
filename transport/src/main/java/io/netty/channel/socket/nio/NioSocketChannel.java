@@ -260,10 +260,10 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
     @Override
     protected void doWrite(ChannelOutboundBuffer in) throws Exception {
         for (;;) {
-            int size = in.size();
+            int size = in.size();        //待刷新entry个数
             if (size == 0) {
                 // All written so clear OP_WRITE
-                clearOpWrite();
+                clearOpWrite();   //如果没有消息可写了，清除写事件(写事件的触发条件是底层写缓冲区可写，这个条件一般都会满足，所以不清除的话，如果某个key注册了写事件，每次select都会立马返回？)
                 break;
             }
             long writtenBytes = 0;
@@ -272,8 +272,8 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
 
             // Ensure the pending writes are made of ByteBufs only.
             ByteBuffer[] nioBuffers = in.nioBuffers();
-            int nioBufferCnt = in.nioBufferCount();
-            long expectedWrittenBytes = in.nioBufferSize();
+            int nioBufferCnt = in.nioBufferCount();             //ByteBuffer数组长度
+            long expectedWrittenBytes = in.nioBufferSize();     //待写入字节长度
             SocketChannel ch = javaChannel();
 
             // Always us nioBuffers() to workaround data-corruption.
@@ -284,17 +284,17 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
                     super.doWrite(in);
                     return;
                 case 1:
-                    // Only one ByteBuf so use non-gathering write
+                    // Only one ByteBuf so use non-gathering write  非聚集写
                     ByteBuffer nioBuffer = nioBuffers[0];
-                    for (int i = config().getWriteSpinCount() - 1; i >= 0; i --) {
+                    for (int i = config().getWriteSpinCount() - 1; i >= 0; i --) {  //将数据写入通道，最多写入writeSpinCount次
                         final int localWrittenBytes = ch.write(nioBuffer);
-                        if (localWrittenBytes == 0) {
+                        if (localWrittenBytes == 0) {  //本地写入字节数为0，可能是底层缓冲区不够？则注册写事件，等底层缓冲区足够的时候，发通知(需要注册写事件)，然后再写
                             setOpWrite = true;
                             break;
                         }
-                        expectedWrittenBytes -= localWrittenBytes;
-                        writtenBytes += localWrittenBytes;
-                        if (expectedWrittenBytes == 0) {
+                        expectedWrittenBytes -= localWrittenBytes;   //待写入字节数
+                        writtenBytes += localWrittenBytes;           //已写入字节数
+                        if (expectedWrittenBytes == 0) { //待写入字节数为0，写入完成
                             done = true;
                             break;
                         }
@@ -318,9 +318,9 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
             }
 
             // Release the fully written buffers, and update the indexes of the partially written buffer.
-            in.removeBytes(writtenBytes);
+            in.removeBytes(writtenBytes);  //此时，nioBuffers里面的内容可能还没写完
 
-            if (!done) {
+            if (!done) {   //如果nioBuffers里面的内容还没写完
                 // Did not write all buffers completely.
                 incompleteWrite(setOpWrite);
                 break;

@@ -59,7 +59,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
     private final Channel channel;
     private Map<EventExecutorGroup, EventExecutor> childExecutors;
-    private volatile MessageSizeEstimator.Handle estimatorHandle;
+    private volatile MessageSizeEstimator.Handle estimatorHandle;       //消息大小评估Handle
     private boolean firstRegistration = true;
 
     /**
@@ -1301,6 +1301,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             readIfIsAutoRead();
         }
 
+        //如果启动了autoRead，会将key的ops添加上read
         private void readIfIsAutoRead() {
             if (channel.config().isAutoRead()) {
                 channel.read();

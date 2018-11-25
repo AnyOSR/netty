@@ -265,31 +265,33 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
         incompleteWrite(setOpWrite);
     }
 
+    //过滤OutboundMessage
     @Override
     protected final Object filterOutboundMessage(Object msg) {
-        if (msg instanceof ByteBuf) {
+        if (msg instanceof ByteBuf) {                //如果是ByteBuf
             ByteBuf buf = (ByteBuf) msg;
-            if (buf.isDirect()) {
+            if (buf.isDirect()) {                    //如果是direct，直接返回
                 return msg;
             }
 
-            return newDirectBuffer(buf);
+            return newDirectBuffer(buf);             //如果是heap
         }
 
-        if (msg instanceof FileRegion) {
+        if (msg instanceof FileRegion) {             //如果是FileRegion
             return msg;
         }
 
+        //其余类型不支持
         throw new UnsupportedOperationException("unsupported message type: " + StringUtil.simpleClassName(msg) + EXPECTED_TYPES);
     }
 
     protected final void incompleteWrite(boolean setOpWrite) {
         // Did not write completely.
-        if (setOpWrite) {
+        if (setOpWrite) {  //如果需要注册写事件
             setOpWrite();
         } else {
             // Schedule flush again later so other tasks can be picked up in the meantime
-            Runnable flushTask = this.flushTask;
+            Runnable flushTask = this.flushTask;  //否则提交一个刷新任务，将底层未写入的数据继续写入
             if (flushTask == null) {
                 flushTask = this.flushTask = new Runnable() {
                     @Override
@@ -332,7 +334,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
         }
         final int interestOps = key.interestOps();
         if ((interestOps & SelectionKey.OP_WRITE) == 0) {
-            key.interestOps(interestOps | SelectionKey.OP_WRITE);
+            key.interestOps(interestOps | SelectionKey.OP_WRITE);   //注册写事件
         }
     }
 
@@ -345,7 +347,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             return;
         }
         final int interestOps = key.interestOps();
-        if ((interestOps & SelectionKey.OP_WRITE) != 0) {
+        if ((interestOps & SelectionKey.OP_WRITE) != 0) {   //如果注册了写事件，将写事件清除
             key.interestOps(interestOps & ~SelectionKey.OP_WRITE);
         }
     }

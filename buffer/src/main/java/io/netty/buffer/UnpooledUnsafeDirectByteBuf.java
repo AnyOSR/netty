@@ -392,6 +392,7 @@ public class UnpooledUnsafeDirectByteBuf extends AbstractReferenceCountedByteBuf
         return (ByteBuffer) internalNioBuffer().clear().position(index).limit(index + length);
     }
 
+    //创造一个buffer的复制对象，共享内容，但是拥有各自的position，LIMIT，cap
     private ByteBuffer internalNioBuffer() {
         ByteBuffer tmpNioBuf = this.tmpNioBuf;
         if (tmpNioBuf == null) {
