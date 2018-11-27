@@ -622,7 +622,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             int readyOps = k.readyOps();
             // We first need to call finishConnect() before try to trigger a read(...) or write(...) as otherwise
             // the NIO JDK channel implementation may throw a NotYetConnectedException.
-            if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
+            if ((readyOps & SelectionKey.OP_CONNECT) != 0) {  //connect事件应该是收到服务端的syn+ack就返回？connect和accept的返回顺序
                 // remove OP_CONNECT as otherwise Selector.select(..) will always return without blocking
                 // See https://github.com/netty/netty/issues/924
                 int ops = k.interestOps();
@@ -640,7 +640,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
             // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
             // to a spin loop
-            if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+            if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) { //accept是收到客户端的ack后返回？
                 unsafe.read();
             }
         } catch (CancelledKeyException ignored) {
