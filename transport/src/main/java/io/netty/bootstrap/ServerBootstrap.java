@@ -186,7 +186,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
                     pipeline.addLast(handler);
                 }
 
-                //然后在event Loop中执行
+                //然后在event Loop中执行？
                 // 一个在ServerSocketChannel的pipeline中添加一个ServerBootstrapAcceptor的任务
                 ch.eventLoop().execute(new Runnable() {
                     @Override
@@ -248,21 +248,24 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             };
         }
 
+        //对于socketServerChannel来说，读的就是SocketChannel
+        //ServerBootstrapAcceptor的作用在于，将NioSocketChannel注册到某一个子group上
+        //并初始化NioSocketChannel
         @Override
         @SuppressWarnings("unchecked")
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            final Channel child = (Channel) msg;
+            final Channel child = (Channel) msg;   //所以可以强制转换
 
-            child.pipeline().addLast(childHandler);
+            child.pipeline().addLast(childHandler);  //将设置的childHandler添加到NioSocketChannel的pipeline上
 
-            setChannelOptions(child, childOptions, logger);
+            setChannelOptions(child, childOptions, logger);  //设置属性
 
             for (Entry<AttributeKey<?>, Object> e: childAttrs) {
                 child.attr((AttributeKey<Object>) e.getKey()).set(e.getValue());
             }
 
             try {
-                childGroup.register(child).addListener(new ChannelFutureListener() {
+                childGroup.register(child).addListener(new ChannelFutureListener() {  //将socketChannel注册到某一个eventLoop上
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
                         if (!future.isSuccess()) {

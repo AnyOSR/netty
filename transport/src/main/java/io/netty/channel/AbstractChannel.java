@@ -398,6 +398,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             return remoteAddress0();
         }
 
+        //将channel注册到eventLoop上
+        //不管是ServerSocketChannel还是SocketChannel，其注册逻辑大部分都是一样的
         @Override
         public final void register(EventLoop eventLoop, final ChannelPromise promise) {
             if (eventLoop == null) {
@@ -444,7 +446,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     return;
                 }
                 boolean firstRegistration = neverRegistered;
-                doRegister();              //由子类实现具体的注册逻辑
+                doRegister();              //由子类实现具体的注册逻辑 注册到selector上
                 neverRegistered = false;   //更改相关状态
                 registered = true;
 
