@@ -26,9 +26,10 @@ import static io.netty.util.internal.ObjectUtil.checkNotNull;
 /**
  * Special {@link AbstractList} implementation which is used within our codec base classes.
  */
+// 16*16
 final class CodecOutputList extends AbstractList<Object> implements RandomAccess {
 
-    private static final CodecOutputListRecycler NOOP_RECYCLER = new CodecOutputListRecycler() {
+    private static final CodecOutputListRecycler NOOP_RECYCLER = new CodecOutputListRecycler() {  //不回收的回收器
 
         @Override
         public void recycle(CodecOutputList object) {
@@ -73,18 +74,18 @@ final class CodecOutputList extends AbstractList<Object> implements RandomAccess
                 // low.
                 return new CodecOutputList(NOOP_RECYCLER, 4);
             }
-            --count;
+            --count;    //数量减一
 
-            int idx = (currentIdx - 1) & mask;
+            int idx = (currentIdx - 1) & mask;           //读是currentIdx-1
             CodecOutputList list = elements[idx];
-            currentIdx = idx;
+            currentIdx = idx;                            //当前被get and return 的index
             return list;
         }
 
         @Override
         public void recycle(CodecOutputList codecOutputList) {
             int idx = currentIdx;
-            elements[idx] = codecOutputList;
+            elements[idx] = codecOutputList;                   //所以回收的时候，index是currentIdx
             currentIdx = (idx + 1) & mask;
             ++count;
             assert count <= elements.length;
@@ -95,10 +96,10 @@ final class CodecOutputList extends AbstractList<Object> implements RandomAccess
         return CODEC_OUTPUT_LISTS_POOL.get().getOrCreate();
     }
 
-    private final CodecOutputListRecycler recycler;
+    private final CodecOutputListRecycler recycler;      //回收的时候，将待回收元素放入recycler，需要持有其引用
     private int size;
     private Object[] array;
-    private boolean insertSinceRecycled;
+    private boolean insertSinceRecycled;                 //回收后是否插入过元素
 
     private CodecOutputList(CodecOutputListRecycler recycler, int size) {
         this.recycler = recycler;
@@ -126,7 +127,7 @@ final class CodecOutputList extends AbstractList<Object> implements RandomAccess
             expandArray();
             insert(size, element);
         }
-        ++ size;
+        ++ size;          //size是写的index
         return true;
     }
 
@@ -157,6 +158,7 @@ final class CodecOutputList extends AbstractList<Object> implements RandomAccess
         ++ size;
     }
 
+    //移除index处的元素
     @Override
     public Object remove(int index) {
         checkIndex(index);
@@ -188,6 +190,7 @@ final class CodecOutputList extends AbstractList<Object> implements RandomAccess
     /**
      * Recycle the array which will clear it and null out all entries in the internal storage.
      */
+    //将每个元素置null，并回收
     void recycle() {
         for (int i = 0 ; i < size; i ++) {
             array[i] = null;
@@ -211,11 +214,12 @@ final class CodecOutputList extends AbstractList<Object> implements RandomAccess
         }
     }
 
-    private void insert(int index, Object element) {
+    private void insert(int index, Object element) {   //插入元素时，会将insertSinceRecycled置为true
         array[index] = element;
         insertSinceRecycled = true;
     }
 
+    //扩展array
     private void expandArray() {
         // double capacity
         int newCapacity = array.length << 1;
