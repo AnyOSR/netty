@@ -131,7 +131,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                         readPendingReset = true;
                         setReadPending(false);
                     }
-                    pipeline.fireChannelRead(byteBuf);      //触发channelRead方法
+                    pipeline.fireChannelRead(byteBuf);      //触发channelRead方法  fireChannelRead方法的入参是接受到的字节
                     byteBuf = null;
 
                     if (totalReadAmount >= Integer.MAX_VALUE - localReadAmount) {  //检测是否溢出
@@ -154,8 +154,8 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                     }
                 } while (++ messages < maxMessagesPerRead);
 
-                pipeline.fireChannelReadComplete();
-                allocHandle.record(totalReadAmount);
+                pipeline.fireChannelReadComplete();   //这就触发ChannelReadComplete？
+                allocHandle.record(totalReadAmount);  //记录当前读到的字节数，以便下次分配时调整大小
 
                 if (close) {
                     closeOnRead(pipeline);

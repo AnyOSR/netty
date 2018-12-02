@@ -50,23 +50,23 @@ import java.util.List;
  * {@link DelimiterBasedFrameDecoder}, {@link FixedLengthFrameDecoder}, {@link LengthFieldBasedFrameDecoder},
  * or {@link LineBasedFrameDecoder}.
  * <p>
- * If a custom frame decoder is required, then one needs to be careful when implementing
- * one with {@link ByteToMessageDecoder}. Ensure there are enough bytes in the buffer for a
- * complete frame by checking {@link ByteBuf#readableBytes()}. If there are not enough bytes
+ * If a custom frame decoder is required, then one needs to be careful when implementing            实现ByteToMessageDecoder的时候需要小心
+ * one with {@link ByteToMessageDecoder}. Ensure there are enough bytes in the buffer for a         根据ByteBuf#readableBytes()来检测buffer里面是否有足够多的字节来构成一个完整的frame
+ * complete frame by checking {@link ByteBuf#readableBytes()}. If there are not enough bytes         如果没有足够多的字节，就不要修改readerIndex，等待更多字节的到来
  * for a complete frame, return without modifying the reader index to allow more bytes to arrive.
  * <p>
- * To check for complete frames without modifying the reader index, use methods like {@link ByteBuf#getInt(int)}.
- * One <strong>MUST</strong> use the reader index when using methods like {@link ByteBuf#getInt(int)}.
+ * To check for complete frames without modifying the reader index, use methods like {@link ByteBuf#getInt(int)}.  为了不修改readerIndex，必须调用不修改index的方法
+ * One <strong>MUST</strong> use the reader index when using methods like {@link ByteBuf#getInt(int)}.              比如getInt(int)
  * For example calling <tt>in.getInt(0)</tt> is assuming the frame starts at the beginning of the buffer, which
  * is not always the case. Use <tt>in.getInt(in.readerIndex())</tt> instead.
  * <h3>Pitfalls</h3>
  * <p>
- * Be aware that sub-classes of {@link ByteToMessageDecoder} <strong>MUST NOT</strong>
+ * Be aware that sub-classes of {@link ByteToMessageDecoder} <strong>MUST NOT</strong>              // ByteToMessageDecoder不是Sharable的，是有状态的
  * annotated with {@link @Sharable}.
  * <p>
- * Some methods such as {@link ByteBuf#readBytes(int)} will cause a memory leak if the returned buffer
- * is not released or added to the <tt>out</tt> {@link List}. Use derived buffers like {@link ByteBuf#readSlice(int)}
- * to avoid leaking memory.
+ * Some methods such as {@link ByteBuf#readBytes(int)} will cause a memory leak if the returned buffer                 // readBytes有可能会内存泄漏(因为创建了新的buffer)
+ * is not released or added to the <tt>out</tt> {@link List}. Use derived buffers like {@link ByteBuf#readSlice(int)}  // 如果返回的buffer没有被释放(持有了一个强引用)
+ * to avoid leaking memory.                                                                                            // readSlice不会内存泄漏 因为没有创建新的buffer
  */
 public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter {
 
@@ -78,8 +78,8 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
         @Override
         public ByteBuf cumulate(ByteBufAllocator alloc, ByteBuf cumulation, ByteBuf in) {
             final ByteBuf buffer;
-            if (cumulation.writerIndex() > cumulation.maxCapacity() - in.readableBytes()
-                    || cumulation.refCnt() > 1 || cumulation instanceof ReadOnlyByteBuf) {
+            if (cumulation.writerIndex() > cumulation.maxCapacity() - in.readableBytes()         //如果超过maxCapacity
+                    || cumulation.refCnt() > 1 || cumulation instanceof ReadOnlyByteBuf) {       //或者是readonly，或者refCnt > 1
                 // Expand cumulation (by replace it) when either there is not more room in the buffer
                 // or if the refCnt is greater then 1 which may happen when the user use slice().retain() or
                 // duplicate().retain() or if its read-only.
@@ -90,8 +90,8 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
                 buffer = expandCumulation(alloc, cumulation, in.readableBytes());
             } else {
                 buffer = cumulation;
-            }
-            buffer.writeBytes(in);
+            }      //看情况决定是否expand     refCnt>1意味着什么？用户调用retain()
+            buffer.writeBytes(in);           //需要复制
             in.release();
             return buffer;
         }
@@ -124,7 +124,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
                     composite = alloc.compositeBuffer(Integer.MAX_VALUE);
                     composite.addComponent(true, cumulation);
                 }
-                composite.addComponent(true, in);
+                composite.addComponent(true, in);     //不需要复制
                 buffer = composite;
             }
             return buffer;
@@ -135,8 +135,8 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
     private static final byte STATE_CALLING_CHILD_DECODE = 1;
     private static final byte STATE_HANDLER_REMOVED_PENDING = 2;
 
-    ByteBuf cumulation;
-    private Cumulator cumulator = MERGE_CUMULATOR;
+    ByteBuf cumulation;                                  //累积的ByteBuf
+    private Cumulator cumulator = MERGE_CUMULATOR;       //累积器
     private boolean singleDecode;
     private boolean decodeWasNull;
     private boolean first;
@@ -148,7 +148,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
      *     <li>{@link #STATE_HANDLER_REMOVED_PENDING}</li>
      * </ul>
      */
-    private byte decodeState = STATE_INIT;
+    private byte decodeState = STATE_INIT;                // 解码状态
     private int discardAfterReads = 16;
     private int numReads;
 
@@ -222,7 +222,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
 
     @Override
     public final void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        if (decodeState == STATE_CALLING_CHILD_DECODE) {
+        if (decodeState == STATE_CALLING_CHILD_DECODE) {   //如果子类正在调用解码，只改变状态，不实际remove掉，可能还有有效数据
             decodeState = STATE_HANDLER_REMOVED_PENDING;
             return;
         }
@@ -235,7 +235,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
             if (readable > 0) {
                 ByteBuf bytes = buf.readBytes(readable);
                 buf.release();
-                ctx.fireChannelRead(bytes);
+                ctx.fireChannelRead(bytes);    //触发channelRead
             } else {
                 buf.release();
             }
@@ -484,8 +484,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
      * @param out           the {@link List} to which decoded messages should be added
      * @throws Exception    is thrown if an error occurs
      */
-    final void decodeRemovalReentryProtection(ChannelHandlerContext ctx, ByteBuf in, List<Object> out)
-            throws Exception {
+    final void decodeRemovalReentryProtection(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         decodeState = STATE_CALLING_CHILD_DECODE;
         try {
             decode(ctx, in, out);
