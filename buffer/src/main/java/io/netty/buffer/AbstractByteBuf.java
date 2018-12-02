@@ -239,22 +239,20 @@ public abstract class AbstractByteBuf extends ByteBuf {
     @Override
     public ByteBuf ensureWritable(int minWritableBytes) {
         if (minWritableBytes < 0) {
-            throw new IllegalArgumentException(String.format(
-                    "minWritableBytes: %d (expected: >= 0)", minWritableBytes));
+            throw new IllegalArgumentException(String.format("minWritableBytes: %d (expected: >= 0)", minWritableBytes));
         }
         ensureWritable0(minWritableBytes);
         return this;
     }
 
     final void ensureWritable0(int minWritableBytes) {
-        ensureAccessible();
-        if (minWritableBytes <= writableBytes()) {
+        ensureAccessible();                           //检查是否可达
+        if (minWritableBytes <= writableBytes()) {    //检查是否拥有足够空间容纳minWritableBytes的字节数
             return;
         }
 
-        if (minWritableBytes > maxCapacity - writerIndex) {
-            throw new IndexOutOfBoundsException(String.format(
-                    "writerIndex(%d) + minWritableBytes(%d) exceeds maxCapacity(%d): %s",
+        if (minWritableBytes > maxCapacity - writerIndex) {   //如果查过了maxCapacity
+            throw new IndexOutOfBoundsException(String.format("writerIndex(%d) + minWritableBytes(%d) exceeds maxCapacity(%d): %s",
                     writerIndex, minWritableBytes, maxCapacity, this));
         }
 
@@ -876,8 +874,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
     }
 
     @Override
-    public int writeBytes(InputStream in, int length)
-            throws IOException {
+    public int writeBytes(InputStream in, int length) throws IOException {
         ensureWritable(length);
         int writtenBytes = setBytes(writerIndex, in, length);
         if (writtenBytes > 0) {
@@ -889,8 +886,8 @@ public abstract class AbstractByteBuf extends ByteBuf {
     @Override
     public int writeBytes(ScatteringByteChannel in, int length) throws IOException {
         ensureWritable(length);
-        int writtenBytes = setBytes(writerIndex, in, length);
-        if (writtenBytes > 0) {
+        int writtenBytes = setBytes(writerIndex, in, length);  //实际写的字节数
+        if (writtenBytes > 0) {                                //设置writerIndex
             writerIndex += writtenBytes;
         }
         return writtenBytes;

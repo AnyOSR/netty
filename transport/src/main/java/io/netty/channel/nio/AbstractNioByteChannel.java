@@ -111,9 +111,9 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                 int totalReadAmount = 0;
                 boolean readPendingReset = false;
                 do {
-                    byteBuf = allocHandle.allocate(allocator);
-                    int writable = byteBuf.writableBytes();
-                    int localReadAmount = doReadBytes(byteBuf);
+                    byteBuf = allocHandle.allocate(allocator);         //利用allocHandle分配适合大小的内存byteBuf
+                    int writable = byteBuf.writableBytes();            //得到可写字节数
+                    int localReadAmount = doReadBytes(byteBuf);        //从通道写字节到byteBuf，最多写writable个字节
                     if (localReadAmount <= 0) {
                         // not was read release the buffer
                         byteBuf.release();
@@ -125,27 +125,29 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                         }
                         break;
                     }
+
+                    // localReadAmount > 0
                     if (!readPendingReset) {
                         readPendingReset = true;
                         setReadPending(false);
                     }
-                    pipeline.fireChannelRead(byteBuf);
+                    pipeline.fireChannelRead(byteBuf);      //触发channelRead方法
                     byteBuf = null;
 
-                    if (totalReadAmount >= Integer.MAX_VALUE - localReadAmount) {
+                    if (totalReadAmount >= Integer.MAX_VALUE - localReadAmount) {  //检测是否溢出
                         // Avoid overflow.
                         totalReadAmount = Integer.MAX_VALUE;
                         break;
                     }
 
-                    totalReadAmount += localReadAmount;
+                    totalReadAmount += localReadAmount;      //读到的总的字节数
 
                     // stop reading
                     if (!config.isAutoRead()) {
                         break;
                     }
 
-                    if (localReadAmount < writable) {
+                    if (localReadAmount < writable) {    //此次读到的字节数小于可写的字节数，接收区缓存被消耗完？
                         // Read less than what the buffer can hold,
                         // which might mean we drained the recv buffer completely.
                         break;
