@@ -753,7 +753,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 //这儿为什么要将wakenUp从false置为true？
                 //如果有任务，且在刚进入此方法到这儿，没有外部线程添加任务，则将wakeUp设置为true，调用selectNow()且break   那任务肯定是在 ^t那段时间添加的
                 //           如果cas失败，则肯定有外部线程将wakeUp由false设置为true，下一次select(...)也会立即返回
-                //
+                //   如果进入这个判断，则表示之前提交的定时任务没有做完，且从进入这个方法到这儿这段时间内，没有外部线程提交任务
                 if (hasTasks() && wakenUp.compareAndSet(false, true)) {
                     selector.selectNow();
                     selectCnt = 1;
